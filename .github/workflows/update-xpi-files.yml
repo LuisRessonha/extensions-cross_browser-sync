@@ -12,17 +12,17 @@ on:
         required: false
         default: false
         type: boolean
-  schedule:
-    # Run weekly on Mondays at 04:00 UTC to keep XPI files updated
-    - cron: '0 4 * * 1'
-  push:
-    branches:
-      - main
-      - master
-    paths:
-      - 'src/shared/catalog.js'
-      - 'scripts/download-xpi.mjs'
-      - '.github/workflows/update-xpi-files.yml'
+  # schedule:
+  #   # Run weekly on Mondays at 04:00 UTC to keep XPI files updated
+  #   - cron: '0 4 * * 1'
+  # push:
+  #   branches:
+  #     - main
+  #     - master
+  #   paths:
+  #     - 'src/shared/catalog.js'
+  #     - 'scripts/download-xpi.mjs'
+  #     - '.github/workflows/update-xpi-files.yml'
 
 permissions:
   contents: write
