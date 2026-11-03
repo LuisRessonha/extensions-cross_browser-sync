@@ -414,6 +414,33 @@ function renderMatrix() {
       }
     });
     actRow.appendChild(ignoreBtn);
+
+    const removeGistBtn = document.createElement('button');
+    removeGistBtn.className = 'btn btn-sm btn-danger';
+    removeGistBtn.textContent = 'Remove from Gist';
+    removeGistBtn.disabled = !item.inGist;
+    removeGistBtn.title = item.inGist
+      ? `Remove "${item.name}" from your GitHub Gist`
+      : 'This extension is not currently saved in your GitHub Gist';
+    removeGistBtn.addEventListener('click', async () => {
+      try {
+        removeGistBtn.disabled = true;
+        const res = await sendMessage({
+          type: 'REMOVE_FROM_GIST',
+          key: item.key,
+          name: item.name
+        });
+        currentState = res.data;
+        renderMatrix();
+        await refreshSyncLogs();
+        showAlert(`Removed "${item.name}" from your GitHub Gist.`);
+      } catch (err) {
+        removeGistBtn.disabled = false;
+        showAlert(err.message, true);
+      }
+    });
+    actRow.appendChild(removeGistBtn);
+
     tdActions.appendChild(actRow);
 
     tr.appendChild(tdExt);

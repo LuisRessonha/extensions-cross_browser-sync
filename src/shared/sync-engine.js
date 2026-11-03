@@ -185,6 +185,7 @@ export function computeSyncComparison({
       items.push({
         status: 'ignored',
         key,
+        inGist: Boolean(remoteMatch),
         localId: localExt.id,
         name: localExt.name,
         description: localExt.description || '',
@@ -213,6 +214,7 @@ export function computeSyncComparison({
       items.push({
         status,
         key,
+        inGist: true,
         localId: localExt.id,
         name: localExt.name,
         description: localExt.description || remoteMatch.description || '',
@@ -231,6 +233,7 @@ export function computeSyncComparison({
       items.push({
         status: 'local-only',
         key,
+        inGist: false,
         localId: localExt.id,
         name: localExt.name,
         description: localExt.description || '',
@@ -277,6 +280,7 @@ export function computeSyncComparison({
       items.push({
         status: 'ignored',
         key: remKey,
+        inGist: true,
         localId: null,
         name: remRecord.name || remKey,
         description: remRecord.description || '',
@@ -297,6 +301,7 @@ export function computeSyncComparison({
     items.push({
       status: 'missing',
       key: remKey,
+      inGist: true,
       localId: null,
       name: remRecord.name || remKey,
       description: remRecord.description || '',
@@ -909,5 +914,58 @@ export async function clearGistData(overrides = {}) {
     throw error;
   }
 }
+
+/**
+ * Removes a single extension entry from the remote GitHub Gist and updates the local remote cache.
+ *
+ * @param {{ key: string, name?: string }} params
+ */
+export async function removeExtensionFromGist({ key, name }) {
+  if (!key) {
+    throw new Error('Extension key is required to remove from Gist.');
+  }
+
+  const settings = await getSettings();
+  const browserEnv = detectBrowserEnvironment();
+  const token = (settings.githubToken || '').trim();
+  const gistId = (settings.gistId || '').trim();
+
+  let payload = null;
+  if (token && gistId) {
+    const fetched = await fetchSyncGist(token, gistId);
+    payload = fetched.payload;
+  } else {
+    payload = (await getRemoteCache()) || createEmptySyncPayload();
+  }
+
+  const nextExtensions = { ...(payload.extensions || {}) };
+  delete nextExtensions[key];
+
+  const updatedPayload = {
+    ...payload,
+    updatedAt: new Date().toISOString(),
+    updatedBy: {
+      deviceId: settings.deviceId,
+      deviceName: settings.deviceName || browserEnv.label,
+      browser: browserEnv.brand,
+      family: browserEnv.family
+    },
+    extensions: nextExtensions
+  };
+
+  if (token && gistId) {
+    await updateSyncGist(token, gistId, updatedPayload);
+  }
+
+  await saveRemoteCache(updatedPayload);
+  await appendSyncLog({
+    status: 'success',
+    mode: 'remove',
+    message: `Removed "${name || key}" from GitHub Gist.`
+  });
+
+  return { ok: true, payload: updatedPayload };
+}
+
 
 

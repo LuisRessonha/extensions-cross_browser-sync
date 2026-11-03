@@ -26,6 +26,7 @@ import {
   getDashboardState,
   isCurrentlyApplyingRemoteState,
   performSync,
+  removeExtensionFromGist,
   saveManualBrowserIds
 } from '../shared/sync-engine.js';
 
@@ -349,6 +350,17 @@ ext?.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
           await clearGistData({
             token: message.token,
             gistId: message.gistId
+          });
+          const state = await getDashboardState({ refreshRemote: false });
+          await refreshBadge();
+          sendResponse({ ok: true, data: state });
+          break;
+        }
+
+        case 'REMOVE_FROM_GIST': {
+          await removeExtensionFromGist({
+            key: message.key,
+            name: message.name
           });
           const state = await getDashboardState({ refreshRemote: false });
           await refreshBadge();

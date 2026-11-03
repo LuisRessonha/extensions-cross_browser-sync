@@ -306,6 +306,31 @@ function renderDashboard() {
     });
     actions.appendChild(ignoreBtn);
 
+    // Remove from Gist button
+    if (item.inGist) {
+      const removeGistBtn = document.createElement('button');
+      removeGistBtn.className = 'icon-btn';
+      removeGistBtn.title = `Remove "${item.name}" from GitHub Gist`;
+      removeGistBtn.textContent = '✕';
+      removeGistBtn.addEventListener('click', async () => {
+        try {
+          removeGistBtn.disabled = true;
+          const res = await sendMessage({
+            type: 'REMOVE_FROM_GIST',
+            key: item.key,
+            name: item.name
+          });
+          currentState = res.data;
+          renderDashboard();
+          showToast(`Removed "${item.name}" from Gist.`);
+        } catch (err) {
+          removeGistBtn.disabled = false;
+          showToast(err.message, true);
+        }
+      });
+      actions.appendChild(removeGistBtn);
+    }
+
     card.appendChild(left);
     card.appendChild(actions);
     els.extensionsList.appendChild(card);
