@@ -311,9 +311,10 @@ export async function resolveFirefoxAddonFromAmo(record) {
         typeof item.homepage?.url === 'string'
           ? item.homepage.url
           : item.homepage?.url?.['en-US'] || '';
+      const itemNorm = normalizeExtensionName(itemName);
 
       if (
-        normalizeExtensionName(itemName) === targetNorm ||
+        itemNorm === targetNorm ||
         (targetHome && normalizeHomepageUrl(itemHome) === targetHome)
       ) {
         return {
@@ -323,10 +324,169 @@ export async function resolveFirefoxAddonFromAmo(record) {
         };
       }
     }
+
+    // Second pass: prefix/substring match on the top AMO search result if targetNorm is >= 4 chars
+    if (targetNorm && targetNorm.length >= 4 && data.results[0]) {
+      const top = data.results[0];
+      const topName =
+        typeof top.name === 'string'
+          ? top.name
+          : top.name?.['en-US'] || Object.values(top.name || {})[0] || '';
+      const topNorm = normalizeExtensionName(topName);
+      if (topNorm && (topNorm.startsWith(targetNorm) || targetNorm.startsWith(topNorm))) {
+        return {
+          firefoxId: top.guid,
+          firefoxUrl: top.url,
+          xpiUrl: top.current_version?.file?.url || null
+        };
+      }
+    }
+
     return null;
   } catch {
     return null;
   }
+}
+
+/**
+ * Attempts to automatically resolve a missing Chromium 32-character Extension ID (`[a-p]{32}`)
+ * using the built-in catalog, homepage URL links, or Chrome Web Store search results.
+ *
+ * @param {{ key?: string, name: string, homepageUrl?: string, description?: string }} record
+ * @returns {Promise<{ chromiumId: string, chromiumUrl: string } | null>}
+ */
+export async function resolveChromiumExtensionFromStore(record) {
+  if (!record?.name) return null;
+
+  // 1. Check built-in catalog first
+  const catalog = findCatalogEntry({ key: record.key, name: record.name });
+  if (catalog?.chromiumId && isChromiumExtensionId(catalog.chromiumId)) {
+    return {
+      chromiumId: catalog.chromiumId,
+      chromiumUrl: `https://chromewebstore.google.com/detail/${catalog.chromiumId}`
+    };
+  }
+
+  // 2. Check if homepageUrl or description directly contains a Chrome Web Store detail link
+  const textToScan = `${record.homepageUrl || ''} ${record.description || ''}`;
+  const directMatch = textToScan.match(
+    /(?:chromewebstore\.google\.com|chrome\.google\.com\/webstore)\/detail\/(?:[^/"'\s?]+\/)?([a-p]{32})/i
+  );
+  if (directMatch?.[1]) {
+    const id = directMatch[1].toLowerCase();
+    return {
+      chromiumId: id,
+      chromiumUrl: `https://chromewebstore.google.com/detail/${id}`
+    };
+  }
+
+  // 3. Query Chrome Web Store search page and match detail slug against normalized extension name
+  try {
+    const query = encodeURIComponent(record.name);
+    const res = await fetch(`https://chromewebstore.google.com/search/${query}`);
+    if (!res.ok) return null;
+    const html = await res.text();
+    const targetNorm = normalizeExtensionName(record.name);
+    if (!targetNorm) return null;
+
+    const regex = /\/detail\/([^/"'\s?]+)\/([a-p]{32})/gi;
+    let match;
+    let firstCandidate = null;
+
+    while ((match = regex.exec(html)) !== null) {
+      const slug = decodeURIComponent(match[1]);
+      const id = match[2].toLowerCase();
+      const slugNorm = normalizeExtensionName(slug);
+
+      if (!firstCandidate) {
+        firstCandidate = { slugNorm, id };
+      }
+
+      if (slugNorm === targetNorm) {
+        return {
+          chromiumId: id,
+          chromiumUrl: `https://chromewebstore.google.com/detail/${id}`
+        };
+      }
+    }
+
+    if (
+      firstCandidate &&
+      targetNorm.length >= 4 &&
+      (firstCandidate.slugNorm.startsWith(targetNorm) ||
+        targetNorm.startsWith(firstCandidate.slugNorm))
+    ) {
+      return {
+        chromiumId: firstCandidate.id,
+        chromiumUrl: `https://chromewebstore.google.com/detail/${firstCandidate.id}`
+      };
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Parses a user-entered Browser ID or Store URL for Chromium or Firefox.
+ * Allows pasting either a raw ID/GUID or a full Chrome Web Store / Edge Add-ons / Firefox AMO URL.
+ *
+ * @param {string} rawInput
+ * @param {'chromium' | 'firefox'} family
+ * @returns {Promise<{ id: string, storeUrl?: string }>}
+ */
+export async function parseAndResolveManualBrowserId(rawInput, family) {
+  const trimmed = (rawInput || '').trim();
+  if (!trimmed) {
+    return { id: '' };
+  }
+
+  if (family === 'chromium') {
+    const urlMatch = trimmed.match(/\/detail\/(?:[^/"'\s?]+\/)?([a-p]{32})/i);
+    if (urlMatch?.[1]) {
+      const id = urlMatch[1].toLowerCase();
+      return {
+        id,
+        storeUrl: `https://chromewebstore.google.com/detail/${id}`
+      };
+    }
+    const cleanId = trimmed.toLowerCase();
+    return {
+      id: cleanId,
+      storeUrl: isChromiumExtensionId(cleanId)
+        ? `https://chromewebstore.google.com/detail/${cleanId}`
+        : undefined
+    };
+  }
+
+  // Firefox: check if input is a full AMO URL (e.g. https://addons.mozilla.org/en-US/firefox/addon/ublock-origin/)
+  const amoMatch = trimmed.match(/addons\.mozilla\.org\/(?:[^/]+\/)?firefox\/addon\/([^/?#]+)/i);
+  const slugOrId = amoMatch?.[1] ? decodeURIComponent(amoMatch[1]) : trimmed;
+
+  try {
+    const res = await fetch(
+      `https://addons.mozilla.org/api/v5/addons/addon/${encodeURIComponent(slugOrId)}/`
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.guid) {
+        return {
+          id: data.guid,
+          storeUrl: data.url || `https://addons.mozilla.org/firefox/addon/${slugOrId}/`
+        };
+      }
+    }
+  } catch {
+    // Fall back to raw slugOrId
+  }
+
+  return {
+    id: slugOrId,
+    storeUrl: amoMatch
+      ? trimmed
+      : `https://addons.mozilla.org/firefox/addon/${encodeURIComponent(slugOrId)}/`
+  };
 }
 
 /**

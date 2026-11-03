@@ -25,7 +25,8 @@ import {
   clearGistData,
   getDashboardState,
   isCurrentlyApplyingRemoteState,
-  performSync
+  performSync,
+  saveManualBrowserIds
 } from '../shared/sync-engine.js';
 
 const ALARM_PERIODIC_SYNC = 'ecbs-periodic-sync';
@@ -308,6 +309,18 @@ ext?.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
           const state = await getDashboardState({ refreshRemote: false });
           await refreshBadge();
           sendResponse({ ok: true, settings: updated, data: state });
+          break;
+        }
+
+        case 'SAVE_BROWSER_IDS': {
+          const savedIds = await saveManualBrowserIds({
+            key: message.key,
+            chromiumInput: message.chromiumInput,
+            firefoxInput: message.firefoxInput
+          });
+          const state = await getDashboardState({ refreshRemote: false });
+          await refreshBadge();
+          sendResponse({ ok: true, savedIds, data: state });
           break;
         }
 

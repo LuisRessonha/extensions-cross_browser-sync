@@ -17,7 +17,8 @@ export const DEFAULT_SETTINGS = {
   syncDisabledExtensions: true,
   includeDevelopmentExtensions: false,
   ignoredKeys: [], // Array of canonical keys or extension IDs excluded from sync
-  customMappings: {} // Map of local extension ID -> canonical key override
+  customMappings: {}, // Map of local extension ID -> canonical key override
+  customBrowserIds: {} // Map of canonical key -> { chromium?: string, firefox?: string }
 };
 
 /**
@@ -43,6 +44,10 @@ export async function getSettings() {
     customMappings:
       stored.customMappings && typeof stored.customMappings === 'object'
         ? stored.customMappings
+        : {},
+    customBrowserIds:
+      stored.customBrowserIds && typeof stored.customBrowserIds === 'object'
+        ? stored.customBrowserIds
         : {}
   };
 

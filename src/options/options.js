@@ -231,27 +231,90 @@ function renderMatrix() {
       tdKey.appendChild(code);
     }
 
-    // Col 3: Browser IDs (Chromium / Firefox)
+    // Col 3: Browser IDs (Chromium / Firefox) with manual edit support when missing or overridden
     const tdIds = document.createElement('td');
     const idList = document.createElement('div');
     idList.className = 'id-list';
-    if (item.ids?.chromium) {
-      const d = document.createElement('div');
-      d.textContent = `Cr: ${item.ids.chromium.slice(0, 12)}…`;
-      d.title = `Chromium ID: ${item.ids.chromium}`;
-      idList.appendChild(d);
-    }
-    if (item.ids?.firefox) {
-      const d = document.createElement('div');
-      d.textContent = `Ff: ${item.ids.firefox}`;
-      d.title = `Firefox ID: ${item.ids.firefox}`;
-      idList.appendChild(d);
-    }
-    if (!item.ids?.chromium && !item.ids?.firefox && item.localId) {
-      const d = document.createElement('div');
-      d.textContent = `ID: ${item.localId}`;
-      idList.appendChild(d);
-    }
+
+    const initialCr = item.ids?.chromium || '';
+    const initialFf = item.ids?.firefox || '';
+
+    const crRow = document.createElement('div');
+    crRow.className = 'id-edit-row';
+    const crLabel = document.createElement('span');
+    crLabel.className = 'id-prefix';
+    crLabel.textContent = 'Cr:';
+    const crInput = document.createElement('input');
+    crInput.type = 'text';
+    crInput.className = `id-input${!initialCr ? ' id-missing' : ''}`;
+    crInput.value = initialCr;
+    crInput.placeholder = 'Missing — enter Chromium ID or URL';
+    crInput.title = initialCr
+      ? `Chromium ID: ${initialCr} (edit or paste Chrome Web Store URL to override)`
+      : 'Chromium ID not found automatically — enter 32-char ID or paste Chrome Web Store URL';
+    crRow.appendChild(crLabel);
+    crRow.appendChild(crInput);
+
+    const ffRow = document.createElement('div');
+    ffRow.className = 'id-edit-row';
+    const ffLabel = document.createElement('span');
+    ffLabel.className = 'id-prefix';
+    ffLabel.textContent = 'Ff:';
+    const ffInput = document.createElement('input');
+    ffInput.type = 'text';
+    ffInput.className = `id-input${!initialFf ? ' id-missing' : ''}`;
+    ffInput.value = initialFf;
+    ffInput.placeholder = 'Missing — enter Firefox ID or URL';
+    ffInput.title = initialFf
+      ? `Firefox ID: ${initialFf} (edit or paste Firefox Add-ons URL to override)`
+      : 'Firefox ID not found automatically — enter Add-on GUID/slug or paste Firefox Add-ons URL';
+    ffRow.appendChild(ffLabel);
+    ffRow.appendChild(ffInput);
+
+    const saveIdsBtn = document.createElement('button');
+    saveIdsBtn.className = 'btn btn-secondary btn-sm hidden';
+    saveIdsBtn.textContent = 'Save IDs';
+    saveIdsBtn.style.alignSelf = 'flex-start';
+
+    const checkIdsDirty = () => {
+      const changed =
+        crInput.value.trim() !== initialCr || ffInput.value.trim() !== initialFf;
+      if (changed) {
+        saveIdsBtn.classList.remove('hidden');
+      } else {
+        saveIdsBtn.classList.add('hidden');
+      }
+    };
+
+    crInput.addEventListener('input', checkIdsDirty);
+    ffInput.addEventListener('input', checkIdsDirty);
+
+    saveIdsBtn.addEventListener('click', async () => {
+      try {
+        saveIdsBtn.disabled = true;
+        const res = await sendMessage({
+          type: 'SAVE_BROWSER_IDS',
+          key: item.key,
+          chromiumInput: crInput.value.trim(),
+          firefoxInput: ffInput.value.trim()
+        });
+        currentState = res.data;
+        renderMatrix();
+        showAlert(
+          `Updated Browser IDs for "${item.name}" (Cr: ${
+            res.savedIds?.chromium || 'none'
+          }, Ff: ${res.savedIds?.firefox || 'none'}).`
+        );
+      } catch (err) {
+        showAlert(err.message, true);
+      } finally {
+        saveIdsBtn.disabled = false;
+      }
+    });
+
+    idList.appendChild(crRow);
+    idList.appendChild(ffRow);
+    idList.appendChild(saveIdsBtn);
     tdIds.appendChild(idList);
 
     // Col 4: Sync Status

@@ -8,7 +8,9 @@ import {
   findMatchingRemoteRecord,
   getStoreInstallInfo,
   isChromiumExtensionId,
+  parseAndResolveManualBrowserId,
   resolveCanonicalKey,
+  resolveChromiumExtensionFromStore,
   resolveFirefoxAddonFromAmo
 } from './matcher.js';
 import {
@@ -18,6 +20,7 @@ import {
   getSettings,
   saveLocalMeta,
   saveRemoteCache,
+  saveSettings,
   touchExtensionTimestamp
 } from './storage.js';
 import {
@@ -67,11 +70,21 @@ export function buildSyncRecordFromLocal(localExt, existingRemote, browserEnv, s
     if (!ids.firefox && catalog.firefoxId) ids.firefox = catalog.firefoxId;
   }
 
+  const customIds = settings?.customBrowserIds?.[key];
+  if (customIds) {
+    if (customIds.chromium) ids.chromium = customIds.chromium;
+    if (customIds.firefox) ids.firefox = customIds.firefox;
+  }
+
   const storeUrls = { ...(existingRemote?.storeUrls || {}) };
-  if (ids.chromium && isChromiumExtensionId(ids.chromium)) {
+  if (customIds?.chromiumUrl) {
+    storeUrls.chromium = customIds.chromiumUrl;
+  } else if (ids.chromium && isChromiumExtensionId(ids.chromium)) {
     storeUrls.chromium = `https://chromewebstore.google.com/detail/${ids.chromium}`;
   }
-  if (catalog?.firefoxSlug) {
+  if (customIds?.firefoxUrl) {
+    storeUrls.firefox = customIds.firefoxUrl;
+  } else if (catalog?.firefoxSlug) {
     storeUrls.firefox = `https://addons.mozilla.org/firefox/addon/${catalog.firefoxSlug}/`;
   } else if (ids.firefox && !storeUrls.firefox) {
     storeUrls.firefox = `https://addons.mozilla.org/firefox/addon/${encodeURIComponent(ids.firefox)}/`;
@@ -238,8 +251,26 @@ export function computeSyncComparison({
   for (const [remKey, remRecord] of Object.entries(remoteMap)) {
     if (matchedRemoteKeys.has(remKey)) continue;
 
-    const ignored = isExtensionIgnored(remRecord, remKey, settings.ignoredKeys);
-    const storeInfo = getStoreInstallInfo(remRecord, browserEnv.family, browserEnv.brand);
+    const customIds = settings?.customBrowserIds?.[remKey];
+    const catalog = findCatalogEntry({
+      key: remKey,
+      name: remRecord.name,
+      id: remRecord.ids?.chromium || remRecord.ids?.firefox
+    });
+    const mergedIds = {
+      ...(catalog?.chromiumId ? { chromium: catalog.chromiumId } : {}),
+      ...(catalog?.firefoxId ? { firefox: catalog.firefoxId } : {}),
+      ...(remRecord.ids || {}),
+      ...(customIds?.chromium ? { chromium: customIds.chromium } : {}),
+      ...(customIds?.firefox ? { firefox: customIds.firefox } : {})
+    };
+    const mergedRecord = {
+      ...remRecord,
+      ids: mergedIds
+    };
+
+    const ignored = isExtensionIgnored(mergedRecord, remKey, settings.ignoredKeys);
+    const storeInfo = getStoreInstallInfo(mergedRecord, browserEnv.family, browserEnv.brand);
 
     if (ignored) {
       counts.ignored++;
@@ -255,7 +286,7 @@ export function computeSyncComparison({
         remoteEnabled: Boolean(remRecord.enabled),
         mayDisable: true,
         installType: null,
-        ids: remRecord.ids || {},
+        ids: mergedIds,
         storeInfo,
         updatedAt: remRecord.updatedAt || null
       });
@@ -275,7 +306,7 @@ export function computeSyncComparison({
       remoteEnabled: Boolean(remRecord.enabled),
       mayDisable: true,
       installType: null,
-      ids: remRecord.ids || {},
+      ids: mergedIds,
       storeInfo,
       updatedAt: remRecord.updatedAt || null
     });
@@ -495,6 +526,147 @@ export function planSyncExecution({
 }
 
 /**
+ * Automatically enriches missing cross-browser IDs (`ids.chromium` and `ids.firefox`)
+ * and store URLs for all extension records in a sync payload.
+ *
+ * @param {Record<string, object>} extensionsMap
+ * @param {object} settings
+ * @returns {Promise<boolean>} True if any Browser ID or Store URL was newly added/updated.
+ */
+export async function enrichMissingBrowserIds(extensionsMap, settings) {
+  if (!extensionsMap || typeof extensionsMap !== 'object') return false;
+  let changed = false;
+
+  const entries = Object.values(extensionsMap);
+  for (const rec of entries) {
+    if (!rec.ids) rec.ids = {};
+    if (!rec.storeUrls) rec.storeUrls = {};
+
+    const prevSnapshot = JSON.stringify({ ids: rec.ids, storeUrls: rec.storeUrls });
+
+    // 1. Apply manual overrides from settings.customBrowserIds
+    const custom = settings?.customBrowserIds?.[rec.key];
+    if (custom) {
+      if (custom.chromium) rec.ids.chromium = custom.chromium;
+      if (custom.firefox) rec.ids.firefox = custom.firefox;
+      if (custom.chromiumUrl) rec.storeUrls.chromium = custom.chromiumUrl;
+      if (custom.firefoxUrl) rec.storeUrls.firefox = custom.firefoxUrl;
+    }
+
+    // 2. Check static catalog
+    const catalog = findCatalogEntry({
+      key: rec.key,
+      name: rec.name,
+      id: rec.ids.chromium || rec.ids.firefox || rec.ids.edge
+    });
+    if (catalog) {
+      if (!rec.ids.chromium && catalog.chromiumId) {
+        rec.ids.chromium = catalog.chromiumId;
+      }
+      if (!rec.ids.firefox && catalog.firefoxId) {
+        rec.ids.firefox = catalog.firefoxId;
+      }
+      if (!rec.storeUrls.chromium && rec.ids.chromium) {
+        rec.storeUrls.chromium = `https://chromewebstore.google.com/detail/${rec.ids.chromium}`;
+      }
+      if (!rec.storeUrls.firefox && catalog.firefoxSlug) {
+        rec.storeUrls.firefox = `https://addons.mozilla.org/firefox/addon/${catalog.firefoxSlug}/`;
+      }
+    }
+
+    // 3. Automatically query Mozilla AMO API if Firefox ID is missing
+    if (!rec.ids.firefox) {
+      const amo = await resolveFirefoxAddonFromAmo(rec);
+      if (amo?.firefoxId) {
+        rec.ids.firefox = amo.firefoxId;
+        if (amo.firefoxUrl) {
+          rec.storeUrls.firefox = amo.firefoxUrl;
+        }
+      }
+    }
+
+    // 4. Automatically query Chrome Web Store if Chromium ID is missing
+    if (!rec.ids.chromium) {
+      const cws = await resolveChromiumExtensionFromStore(rec);
+      if (cws?.chromiumId) {
+        rec.ids.chromium = cws.chromiumId;
+        if (cws.chromiumUrl) {
+          rec.storeUrls.chromium = cws.chromiumUrl;
+        }
+      }
+    }
+
+    const nextSnapshot = JSON.stringify({ ids: rec.ids, storeUrls: rec.storeUrls });
+    if (prevSnapshot !== nextSnapshot) {
+      changed = true;
+    }
+  }
+
+  return changed;
+}
+
+/**
+ * Saves manual Browser ID overrides (`chromium` and/or `firefox`) for a canonical extension key,
+ * resolving store URLs if pasted, and updates the cached remote payload.
+ *
+ * @param {{ key: string, chromiumInput?: string, firefoxInput?: string }} params
+ */
+export async function saveManualBrowserIds({ key, chromiumInput, firefoxInput }) {
+  if (!key) throw new Error('Extension key is required.');
+
+  const settings = await getSettings();
+  const customBrowserIds = { ...(settings.customBrowserIds || {}) };
+  const existing = customBrowserIds[key] || {};
+
+  const nextEntry = { ...existing };
+
+  if (typeof chromiumInput === 'string') {
+    const parsedCr = await parseAndResolveManualBrowserId(chromiumInput, 'chromium');
+    if (parsedCr.id) {
+      nextEntry.chromium = parsedCr.id;
+      if (parsedCr.storeUrl) nextEntry.chromiumUrl = parsedCr.storeUrl;
+    } else {
+      delete nextEntry.chromium;
+      delete nextEntry.chromiumUrl;
+    }
+  }
+
+  if (typeof firefoxInput === 'string') {
+    const parsedFf = await parseAndResolveManualBrowserId(firefoxInput, 'firefox');
+    if (parsedFf.id) {
+      nextEntry.firefox = parsedFf.id;
+      if (parsedFf.storeUrl) nextEntry.firefoxUrl = parsedFf.storeUrl;
+    } else {
+      delete nextEntry.firefox;
+      delete nextEntry.firefoxUrl;
+    }
+  }
+
+  customBrowserIds[key] = nextEntry;
+  await saveSettings({ customBrowserIds });
+
+  // Also update remote cache if present so UI and Gist sync reflect it immediately
+  const cached = await getRemoteCache();
+  if (cached?.extensions?.[key]) {
+    const rec = cached.extensions[key];
+    rec.ids = { ...(rec.ids || {}) };
+    rec.storeUrls = { ...(rec.storeUrls || {}) };
+
+    if (nextEntry.chromium) {
+      rec.ids.chromium = nextEntry.chromium;
+      if (nextEntry.chromiumUrl) rec.storeUrls.chromium = nextEntry.chromiumUrl;
+    }
+    if (nextEntry.firefox) {
+      rec.ids.firefox = nextEntry.firefox;
+      if (nextEntry.firefoxUrl) rec.storeUrls.firefox = nextEntry.firefoxUrl;
+    }
+    await saveRemoteCache(cached);
+  }
+
+  return nextEntry;
+}
+
+/**
  * Executes a full sync operation ('merge', 'push', or 'pull') with GitHub Gist.
  *
  * @param {{ mode?: 'merge' | 'push' | 'pull' }} [options]
@@ -528,18 +700,13 @@ export async function performSync(options = {}) {
       mode
     });
 
-    // 3. Optionally enrich Firefox AMO store URLs for newly pushed Chromium extensions
-    if (plan.remoteChanged && browserEnv.family === 'chromium') {
-      const entries = Object.values(plan.nextPayload.extensions);
-      for (const rec of entries) {
-        if (!rec.storeUrls?.firefox && !rec.ids?.firefox) {
-          const amo = await resolveFirefoxAddonFromAmo(rec);
-          if (amo) {
-            rec.ids.firefox = amo.firefoxId;
-            rec.storeUrls.firefox = amo.firefoxUrl;
-          }
-        }
-      }
+    // 3. Automatically resolve & update any missing Chromium or Firefox Browser IDs across all extensions
+    const idsEnriched = await enrichMissingBrowserIds(
+      plan.nextPayload.extensions,
+      settings
+    );
+    if (idsEnriched) {
+      plan.remoteChanged = true;
     }
 
     // 4. Apply local enable/disable state changes if allowed
@@ -674,6 +841,8 @@ export async function buildInitialPayloadFromLocal() {
     localMeta,
     mode: 'push'
   });
+
+  await enrichMissingBrowserIds(plan.nextPayload.extensions, settings);
 
   return plan.nextPayload;
 }

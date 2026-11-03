@@ -523,10 +523,39 @@ select:focus {
 .id-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 5px;
   font-family: monospace;
   font-size: 11px;
   color: var(--text-secondary);
+}
+
+.id-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.id-prefix {
+  width: 20px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.id-input {
+  width: 210px !important;
+  padding: 3px 7px !important;
+  font-family: monospace;
+  font-size: 11px !important;
+}
+
+.id-input.id-missing {
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.id-input.id-missing::placeholder {
+  color: #fbbf24;
+  opacity: 0.8;
 }
 
 .pill {

@@ -6,10 +6,12 @@ import {
   findMatchingRemoteRecord,
   getStoreInstallInfo,
   normalizeExtensionName,
+  parseAndResolveManualBrowserId,
   resolveCanonicalKey
 } from '../src/shared/matcher.js';
 import {
   computeSyncComparison,
+  enrichMissingBrowserIds,
   planSyncExecution
 } from '../src/shared/sync-engine.js';
 import { createEmptySyncPayload } from '../src/shared/gist.js';
@@ -189,3 +191,63 @@ test('planSyncExecution and computeSyncComparison sync state between Chrome and 
   assert.equal(mergePlan.missingExtensions.length, 1);
   assert.equal(mergePlan.missingExtensions[0].key, 'ublock-origin');
 });
+
+test('parseAndResolveManualBrowserId extracts IDs from raw strings or full store URLs', async () => {
+  const crFromUrl = await parseAndResolveManualBrowserId(
+    'https://chromewebstore.google.com/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm',
+    'chromium'
+  );
+  assert.equal(crFromUrl.id, 'cjpalhdlnbpafiamejdnhcphjbkeiagm');
+  assert.equal(
+    crFromUrl.storeUrl,
+    'https://chromewebstore.google.com/detail/cjpalhdlnbpafiamejdnhcphjbkeiagm'
+  );
+
+  const crRaw = await parseAndResolveManualBrowserId(
+    'eimadpbcbfnmbkopoojfekhnkhdbieeh',
+    'chromium'
+  );
+  assert.equal(crRaw.id, 'eimadpbcbfnmbkopoojfekhnkhdbieeh');
+});
+
+test('enrichMissingBrowserIds populates missing Chromium and Firefox IDs from catalog and custom overrides', async () => {
+  const extensionsMap = {
+    'dark-reader': {
+      key: 'dark-reader',
+      name: 'Dark Reader',
+      ids: { firefox: 'addon@darkreader.org' },
+      storeUrls: {}
+    },
+    'my-custom-ext': {
+      key: 'my-custom-ext',
+      name: 'My Custom Ext',
+      ids: {},
+      storeUrls: {}
+    }
+  };
+
+  const settings = {
+    customBrowserIds: {
+      'my-custom-ext': {
+        chromium: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        firefox: 'my-custom-ext@example.org'
+      }
+    }
+  };
+
+  const changed = await enrichMissingBrowserIds(extensionsMap, settings);
+  assert.equal(changed, true);
+  assert.equal(
+    extensionsMap['dark-reader'].ids.chromium,
+    'eimadpbcbfnmbkopoojfekhnkhdbieeh'
+  );
+  assert.equal(
+    extensionsMap['my-custom-ext'].ids.chromium,
+    'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+  );
+  assert.equal(
+    extensionsMap['my-custom-ext'].ids.firefox,
+    'my-custom-ext@example.org'
+  );
+});
+

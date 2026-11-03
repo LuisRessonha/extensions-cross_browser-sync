@@ -36,6 +36,7 @@
   "host_permissions": [
     "https://api.github.com/*",
     "https://gist.githubusercontent.com/*",
-    "https://addons.mozilla.org/*"
+    "https://addons.mozilla.org/*",
+    "https://chromewebstore.google.com/*"
   ]
 }
