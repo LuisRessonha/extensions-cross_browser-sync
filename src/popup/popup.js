@@ -136,7 +136,7 @@ function renderDashboard() {
   const missingItems = items.filter((i) => i.status === 'missing');
   if (missingItems.length > 0 && (activeTab === 'missing' || activeTab === 'all')) {
     els.installAllMissingBtn.classList.remove('hidden');
-    els.installAllMissingBtn.textContent = `Install Missing (${missingItems.length}) ↗`;
+    els.installAllMissingBtn.textContent = `Auto-Install Missing (${missingItems.length})`;
   } else {
     els.installAllMissingBtn.classList.add('hidden');
   }
@@ -220,17 +220,37 @@ function renderDashboard() {
     const actions = document.createElement('div');
     actions.className = 'ext-actions';
 
+    if (item.storeInfo?.url) {
+      const storeBtn = document.createElement('button');
+      storeBtn.className = 'btn btn-sm btn-secondary';
+      storeBtn.textContent = 'Store ↗';
+      storeBtn.title = `Open store page in ${item.storeInfo?.storeName || 'Browser Store'}`;
+      storeBtn.addEventListener('click', () => {
+        ext.tabs.create({ url: item.storeInfo.url });
+      });
+      actions.appendChild(storeBtn);
+    }
+
     if (item.status === 'missing') {
-      const installBtn = document.createElement('button');
-      installBtn.className = 'btn btn-sm btn-accent';
-      installBtn.textContent = item.storeInfo?.isDirect ? 'Install ↗' : 'Find in Store ↗';
-      installBtn.title = `Open in ${item.storeInfo?.storeName || 'Browser Store'}`;
-      installBtn.addEventListener('click', () => {
-        if (item.storeInfo?.url) {
-          ext.tabs.create({ url: item.storeInfo.url });
+      const autoInstallBtn = document.createElement('button');
+      autoInstallBtn.className = 'btn btn-sm btn-accent';
+      autoInstallBtn.textContent = 'Auto Install';
+      autoInstallBtn.title =
+        'Install automatically (direct XPI on Firefox / managed auto-closing installer on Chromium)';
+      autoInstallBtn.addEventListener('click', async () => {
+        try {
+          autoInstallBtn.disabled = true;
+          await sendMessage({
+            type: 'AUTO_INSTALL_EXTENSION',
+            item
+          });
+        } catch (err) {
+          showToast(err.message, true);
+        } finally {
+          autoInstallBtn.disabled = false;
         }
       });
-      actions.appendChild(installBtn);
+      actions.appendChild(autoInstallBtn);
     } else if (item.localId) {
       // Enable/Disable Switch
       const label = document.createElement('label');
@@ -374,13 +394,20 @@ els.searchInput.addEventListener('input', (e) => {
   renderDashboard();
 });
 
-els.installAllMissingBtn.addEventListener('click', () => {
+els.installAllMissingBtn.addEventListener('click', async () => {
   if (!currentState) return;
-  const missing = currentState.comparison.items.filter(
-    (i) => i.status === 'missing' && i.storeInfo?.url
-  );
-  for (const item of missing) {
-    ext.tabs.create({ url: item.storeInfo.url, active: false });
+  const missing = currentState.comparison.items.filter((i) => i.status === 'missing');
+  if (missing.length === 0) return;
+  try {
+    els.installAllMissingBtn.disabled = true;
+    await sendMessage({
+      type: 'AUTO_INSTALL_ALL_MISSING',
+      items: missing
+    });
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    els.installAllMissingBtn.disabled = false;
   }
 });
 

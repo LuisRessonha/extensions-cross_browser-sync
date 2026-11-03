@@ -34,6 +34,7 @@ const els = {
   matrixStats: document.getElementById('matrix-stats'),
   matrixSearch: document.getElementById('matrix-search'),
   matrixFilter: document.getElementById('matrix-filter'),
+  matrixInstallMissingBtn: document.getElementById('matrix-install-missing-btn'),
   refreshRemoteBtn: document.getElementById('refresh-remote-btn'),
   matrixTbody: document.getElementById('matrix-tbody')
 };
@@ -111,6 +112,14 @@ function renderMatrix() {
     strong.textContent = String(val);
     chip.append(`${label}: `, strong);
     els.matrixStats.appendChild(chip);
+  }
+
+  const missingItems = items.filter((i) => i.status === 'missing');
+  if (missingItems.length > 0) {
+    els.matrixInstallMissingBtn.classList.remove('hidden');
+    els.matrixInstallMissingBtn.textContent = `Auto-Install All Missing (${missingItems.length})`;
+  } else {
+    els.matrixInstallMissingBtn.classList.add('hidden');
   }
 
   const query = els.matrixSearch.value.trim().toLowerCase();
@@ -298,14 +307,32 @@ function renderMatrix() {
       storeBtn.href = item.storeInfo.url;
       storeBtn.target = '_blank';
       storeBtn.rel = 'noopener';
-      storeBtn.className = `btn btn-sm ${
-        item.status === 'missing' ? 'btn-primary' : 'btn-secondary'
-      }`;
-      storeBtn.textContent =
-        item.status === 'missing'
-          ? `Install (${item.storeInfo.storeName}) ↗`
-          : 'Store ↗';
+      storeBtn.className = 'btn btn-sm btn-secondary';
+      storeBtn.textContent = 'Store ↗';
+      storeBtn.title = `Open store page in ${item.storeInfo.storeName}`;
       actRow.appendChild(storeBtn);
+    }
+
+    if (item.status === 'missing') {
+      const autoInstallBtn = document.createElement('button');
+      autoInstallBtn.className = 'btn btn-sm btn-primary';
+      autoInstallBtn.textContent = 'Auto Install';
+      autoInstallBtn.title =
+        'Install automatically (direct XPI on Firefox / managed auto-closing installer on Chromium)';
+      autoInstallBtn.addEventListener('click', async () => {
+        try {
+          autoInstallBtn.disabled = true;
+          await sendMessage({
+            type: 'AUTO_INSTALL_EXTENSION',
+            item
+          });
+        } catch (err) {
+          showAlert(err.message, true);
+        } finally {
+          autoInstallBtn.disabled = false;
+        }
+      });
+      actRow.appendChild(autoInstallBtn);
     }
 
     const ignoreBtn = document.createElement('button');
@@ -578,6 +605,23 @@ els.refreshRemoteBtn.addEventListener('click', async () => {
 
 els.matrixSearch.addEventListener('input', () => renderMatrix());
 els.matrixFilter.addEventListener('change', () => renderMatrix());
+
+els.matrixInstallMissingBtn.addEventListener('click', async () => {
+  if (!currentState) return;
+  const missing = currentState.comparison.items.filter((i) => i.status === 'missing');
+  if (missing.length === 0) return;
+  try {
+    els.matrixInstallMissingBtn.disabled = true;
+    await sendMessage({
+      type: 'AUTO_INSTALL_ALL_MISSING',
+      items: missing
+    });
+  } catch (err) {
+    showAlert(err.message, true);
+  } finally {
+    els.matrixInstallMissingBtn.disabled = false;
+  }
+});
 
 // Export JSON
 els.exportJsonBtn.addEventListener('click', async () => {

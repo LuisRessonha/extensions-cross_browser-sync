@@ -318,7 +318,8 @@ export async function resolveFirefoxAddonFromAmo(record) {
       ) {
         return {
           firefoxId: item.guid,
-          firefoxUrl: item.url
+          firefoxUrl: item.url,
+          xpiUrl: item.current_version?.file?.url || null
         };
       }
     }
@@ -327,4 +328,87 @@ export async function resolveFirefoxAddonFromAmo(record) {
     return null;
   }
 }
+
+/**
+ * Resolves the most direct automatic installation URL for a missing extension.
+ * - On Firefox: resolves the direct `.xpi` package URL via Mozilla AMO API v5 so Firefox
+ *   immediately triggers the native extension install prompt without browsing the store page.
+ * - On Chromium: resolves the direct store page URL to be opened in a managed auto-closing installer tab.
+ *
+ * @param {object} record
+ * @param {'chromium' | 'firefox'} targetFamily
+ * @param {string} [targetBrand='chrome']
+ * @returns {Promise<{ installUrl: string, storeUrl: string, isDirectPackage: boolean }>}
+ */
+export async function resolveDirectInstallTarget(record, targetFamily, targetBrand = 'chrome') {
+  const storeInfo = getStoreInstallInfo(record, targetFamily, targetBrand);
+  const catalogEntry = findCatalogEntry({
+    key: record?.key,
+    name: record?.name,
+    id: record?.ids?.chromium || record?.ids?.firefox || record?.ids?.edge
+  });
+
+  if (targetFamily === 'firefox') {
+    let slugOrGuid =
+      catalogEntry?.firefoxSlug || record?.ids?.firefox || catalogEntry?.firefoxId || null;
+
+    if (!slugOrGuid && record?.storeUrls?.firefox) {
+      const m = record.storeUrls.firefox.match(/\/firefox\/addon\/([^/?#]+)/);
+      if (m?.[1]) slugOrGuid = decodeURIComponent(m[1]);
+    }
+
+    if (slugOrGuid) {
+      try {
+        const res = await fetch(
+          `https://addons.mozilla.org/api/v5/addons/addon/${encodeURIComponent(slugOrGuid)}/`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const xpiUrl = data?.current_version?.file?.url;
+          if (xpiUrl) {
+            return {
+              installUrl: xpiUrl,
+              storeUrl: data?.url || storeInfo.url,
+              isDirectPackage: true
+            };
+          }
+        }
+      } catch {
+        // Fall through to latest download path or search
+      }
+
+      if (catalogEntry?.firefoxSlug) {
+        return {
+          installUrl: `https://addons.mozilla.org/firefox/downloads/latest/${catalogEntry.firefoxSlug}/addon-latest.xpi`,
+          storeUrl: storeInfo.url,
+          isDirectPackage: true
+        };
+      }
+    }
+
+    // Try live AMO search by extension name/homepage
+    const amoMatch = await resolveFirefoxAddonFromAmo(record);
+    if (amoMatch?.xpiUrl) {
+      return {
+        installUrl: amoMatch.xpiUrl,
+        storeUrl: amoMatch.firefoxUrl || storeInfo.url,
+        isDirectPackage: true
+      };
+    }
+    if (amoMatch?.firefoxUrl) {
+      return {
+        installUrl: amoMatch.firefoxUrl,
+        storeUrl: amoMatch.firefoxUrl,
+        isDirectPackage: false
+      };
+    }
+  }
+
+  return {
+    installUrl: storeInfo.url,
+    storeUrl: storeInfo.url,
+    isDirectPackage: false
+  };
+}
+
 

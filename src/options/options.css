@@ -424,10 +424,20 @@ select:focus {
 }
 
 .matrix-toolbar {
-  display: grid;
-  grid-template-columns: 1fr 200px auto;
+  display: flex;
+  align-items: center;
   gap: 10px;
   margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.matrix-toolbar input[type='search'] {
+  flex: 1;
+  min-width: 220px;
+}
+
+.matrix-toolbar select {
+  width: 210px;
 }
 
 .table-wrapper {

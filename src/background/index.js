@@ -1,9 +1,14 @@
 import {
+  detectBrowserEnvironment,
   ext,
   setExtensionEnabled,
   uninstallExtension
 } from '../shared/browser-polyfill.js';
-import { resolveCanonicalKey } from '../shared/matcher.js';
+import {
+  normalizeExtensionName,
+  resolveCanonicalKey,
+  resolveDirectInstallTarget
+} from '../shared/matcher.js';
 import {
   getSettings,
   getSyncLogs,
@@ -25,6 +30,40 @@ import {
 
 const ALARM_PERIODIC_SYNC = 'ecbs-periodic-sync';
 const ALARM_DEBOUNCED_SYNC = 'ecbs-debounced-sync';
+
+/**
+ * Tracks extensions initiated via "Auto Install" so when `management.onInstalled` fires:
+ * 1. The temporary store/installer tab is automatically closed.
+ * 2. The extension's synced enabled/disabled state (`remoteEnabled`) is automatically applied.
+ */
+const pendingAutoInstalls = new Map();
+
+async function triggerAutoInstallItem(item, active = true) {
+  const browserEnv = detectBrowserEnvironment();
+  const target = await resolveDirectInstallTarget(
+    item,
+    browserEnv.family,
+    browserEnv.brand
+  );
+
+  const tab = await ext.tabs.create({
+    url: target.installUrl,
+    active
+  });
+
+  if (item?.key) {
+    pendingAutoInstalls.set(item.key, {
+      key: item.key,
+      name: item.name,
+      ids: item.ids || {},
+      remoteEnabled: item.remoteEnabled !== false,
+      tabId: tab?.id || null,
+      createdAt: Date.now()
+    });
+  }
+
+  return target;
+}
 
 /**
  * Updates the toolbar badge to indicate missing or out-of-sync extensions.
@@ -103,7 +142,48 @@ if (ext?.management) {
   ext.management.onDisabled?.addListener((info) => {
     handleLocalExtensionChange(info);
   });
-  ext.management.onInstalled?.addListener((info) => {
+  ext.management.onInstalled?.addListener(async (info) => {
+    try {
+      const settings = await getSettings();
+      const key = resolveCanonicalKey(info, settings.customMappings);
+      const normName = normalizeExtensionName(info?.name);
+
+      let matchedPending = pendingAutoInstalls.get(key);
+      if (!matchedPending) {
+        for (const entry of pendingAutoInstalls.values()) {
+          if (
+            entry.ids?.chromium === info.id ||
+            entry.ids?.firefox === info.id ||
+            entry.ids?.edge === info.id ||
+            (normName && normalizeExtensionName(entry.name) === normName)
+          ) {
+            matchedPending = entry;
+            break;
+          }
+        }
+      }
+
+      if (matchedPending) {
+        pendingAutoInstalls.delete(matchedPending.key);
+        if (matchedPending.tabId && ext?.tabs?.remove) {
+          try {
+            await ext.tabs.remove(matchedPending.tabId);
+          } catch {
+            // Tab may already be closed
+          }
+        }
+        if (matchedPending.remoteEnabled === false && info.mayDisable !== false) {
+          try {
+            await setExtensionEnabled(info.id, false);
+          } catch (err) {
+            console.warn('Failed to apply disabled state after auto-install:', err);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Error handling post-auto-install:', err);
+    }
+
     handleLocalExtensionChange(info);
   });
   ext.management.onUninstalled?.addListener(() => {
@@ -186,6 +266,23 @@ ext?.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
           const state = await getDashboardState({ refreshRemote: false });
           await refreshBadge();
           sendResponse({ ok: true, data: state });
+          break;
+        }
+
+        case 'AUTO_INSTALL_EXTENSION': {
+          const target = await triggerAutoInstallItem(message.item, true);
+          sendResponse({ ok: true, target });
+          break;
+        }
+
+        case 'AUTO_INSTALL_ALL_MISSING': {
+          const items = Array.isArray(message.items) ? message.items : [];
+          const results = [];
+          for (let i = 0; i < items.length; i++) {
+            const target = await triggerAutoInstallItem(items[i], i === 0);
+            results.push(target);
+          }
+          sendResponse({ ok: true, count: results.length, results });
           break;
         }
 
