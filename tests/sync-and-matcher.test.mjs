@@ -2,8 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  buildCatalogEntry,
   findCatalogEntry,
   findMatchingRemoteRecord,
+  formatCatalogEntrySnippet,
   getStoreInstallInfo,
   normalizeExtensionName,
   parseAndResolveManualBrowserId,
@@ -250,4 +252,31 @@ test('enrichMissingBrowserIds populates missing Chromium and Firefox IDs from ca
     'my-custom-ext@example.org'
   );
 });
+
+test('buildCatalogEntry and formatCatalogEntrySnippet produce catalog.js snippet format', () => {
+  const entry = buildCatalogEntry({
+    key: 'bitwarden',
+    name: 'Bitwarden Password Manager',
+    ids: {
+      chromium: 'nngceckbapebfimnlniiiahkandclblb',
+      edge: 'jbkfoedolllekgbhcbcoahefnbanhhlh',
+      firefox: '{446900e4-71c2-419f-a6a7-df9c091e268b}'
+    }
+  });
+
+  const snippet = formatCatalogEntrySnippet(entry);
+  assert.equal(
+    snippet,
+    `  {
+    key: 'bitwarden',
+    name: 'Bitwarden Password Manager',
+    aliases: ['Bitwarden - Free Password Manager', 'Bitwarden'],
+    chromiumId: 'nngceckbapebfimnlniiiahkandclblb',
+    edgeId: 'jbkfoedolllekgbhcbcoahefnbanhhlh',
+    firefoxId: '{446900e4-71c2-419f-a6a7-df9c091e268b}',
+    firefoxSlug: 'bitwarden-password-manager'
+  }`
+  );
+});
+
 

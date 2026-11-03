@@ -229,6 +229,27 @@
         </div>
       </div>
     </div>
+
+    <!-- Catalog JSON Snippet Popup Modal -->
+    <div id="catalog-json-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="catalog-json-modal-title">
+      <div class="modal-dialog" style="max-width: 560px;">
+        <div class="modal-header">
+          <h2 id="catalog-json-modal-title">Catalog Entry Snippet</h2>
+          <button type="button" id="close-catalog-json-modal-btn" class="modal-close-btn" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body">
+          <p class="card-desc" style="margin-bottom: 4px;">
+            Copy this entry into <code>KNOWN_EXTENSIONS_CATALOG</code> in <code>src/shared/catalog.js</code>:
+          </p>
+          <pre id="catalog-json-pre" class="catalog-code-block"></pre>
+          <div class="button-row" style="justify-content: flex-end;">
+            <button type="button" id="copy-catalog-json-btn" class="btn btn-primary btn-sm">
+              Copy to Clipboard
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="options.js"></script>

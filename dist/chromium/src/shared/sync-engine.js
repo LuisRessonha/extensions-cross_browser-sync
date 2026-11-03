@@ -196,6 +196,7 @@ export function computeSyncComparison({
         mayDisable: localExt.mayDisable !== false,
         installType: localExt.installType || 'normal',
         ids: enrichedRecord.ids,
+        storeUrls: enrichedRecord.storeUrls,
         storeInfo,
         updatedAt: enrichedRecord.updatedAt
       });
@@ -225,6 +226,7 @@ export function computeSyncComparison({
         mayDisable: localExt.mayDisable !== false,
         installType: localExt.installType || 'normal',
         ids: enrichedRecord.ids,
+        storeUrls: enrichedRecord.storeUrls,
         storeInfo,
         updatedAt: remoteMatch.updatedAt || enrichedRecord.updatedAt
       });
@@ -244,6 +246,7 @@ export function computeSyncComparison({
         mayDisable: localExt.mayDisable !== false,
         installType: localExt.installType || 'normal',
         ids: enrichedRecord.ids,
+        storeUrls: enrichedRecord.storeUrls,
         storeInfo,
         updatedAt: enrichedRecord.updatedAt
       });
@@ -291,6 +294,7 @@ export function computeSyncComparison({
         mayDisable: true,
         installType: null,
         ids: mergedIds,
+        storeUrls: remRecord.storeUrls || {},
         storeInfo,
         updatedAt: remRecord.updatedAt || null
       });
@@ -312,6 +316,7 @@ export function computeSyncComparison({
       mayDisable: true,
       installType: null,
       ids: mergedIds,
+      storeUrls: remRecord.storeUrls || {},
       storeInfo,
       updatedAt: remRecord.updatedAt || null
     });

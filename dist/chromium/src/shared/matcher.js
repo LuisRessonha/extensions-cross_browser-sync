@@ -319,6 +319,7 @@ export async function resolveFirefoxAddonFromAmo(record) {
       ) {
         return {
           firefoxId: item.guid,
+          firefoxSlug: item.slug || null,
           firefoxUrl: item.url,
           xpiUrl: item.current_version?.file?.url || null
         };
@@ -336,6 +337,7 @@ export async function resolveFirefoxAddonFromAmo(record) {
       if (topNorm && (topNorm.startsWith(targetNorm) || targetNorm.startsWith(topNorm))) {
         return {
           firefoxId: top.guid,
+          firefoxSlug: top.slug || null,
           firefoxUrl: top.url,
           xpiUrl: top.current_version?.file?.url || null
         };
@@ -570,5 +572,153 @@ export async function resolveDirectInstallTarget(record, targetFamily, targetBra
     isDirectPackage: false
   };
 }
+
+/**
+ * Extracts a Firefox AMO slug from a URL if present and not a GUID.
+ * @param {string} url
+ * @returns {string}
+ */
+function extractFirefoxSlugFromUrl(url) {
+  if (!url || typeof url !== 'string') return '';
+  const m = url.match(/addons\.mozilla\.org\/(?:[^/]+\/)?firefox\/addon\/([^/?#]+)/i);
+  if (!m?.[1]) return '';
+  const candidate = decodeURIComponent(m[1]);
+  if (candidate.startsWith('{') || candidate.includes('@')) return '';
+  return candidate;
+}
+
+/**
+ * Builds a structured catalog entry object for an extension item.
+ *
+ * @param {object} item
+ * @param {{ chromiumId?: string, edgeId?: string, firefoxId?: string, firefoxSlug?: string }} [extra={}]
+ */
+export function buildCatalogEntry(item, extra = {}) {
+  const catalog = findCatalogEntry({
+    key: item?.key,
+    name: item?.name,
+    id: item?.localId || item?.ids?.chromium || item?.ids?.firefox || item?.ids?.edge
+  });
+
+  const key = item?.key || catalog?.key || resolveCanonicalKey(item || {});
+  const name = catalog?.name || item?.name || key;
+
+  const aliasSet = new Set(Array.isArray(catalog?.aliases) ? catalog.aliases : []);
+  if (item?.name && item.name !== name) {
+    aliasSet.add(item.name);
+  }
+  if (item?.name) {
+    const shortParts = item.name.split(/\s+[-–—:]\s+|\s*:\s+/);
+    if (shortParts[0] && shortParts[0].trim().length >= 3 && shortParts[0].trim() !== name) {
+      aliasSet.add(shortParts[0].trim());
+    }
+  }
+  const aliases = Array.from(aliasSet);
+
+  const chromiumId =
+    extra.chromiumId ||
+    item?.ids?.chromium ||
+    (isChromiumExtensionId(item?.localId) ? item.localId : '') ||
+    catalog?.chromiumId ||
+    '';
+
+  const edgeId = extra.edgeId || item?.ids?.edge || catalog?.edgeId || '';
+
+  const firefoxId =
+    extra.firefoxId ||
+    item?.ids?.firefox ||
+    (item?.localId && !isChromiumExtensionId(item.localId) ? item.localId : '') ||
+    catalog?.firefoxId ||
+    '';
+
+  const firefoxSlug =
+    extra.firefoxSlug ||
+    catalog?.firefoxSlug ||
+    extractFirefoxSlugFromUrl(item?.storeUrls?.firefox) ||
+    extractFirefoxSlugFromUrl(item?.storeInfo?.url) ||
+    '';
+
+  return {
+    key,
+    name,
+    aliases,
+    chromiumId,
+    edgeId,
+    firefoxId,
+    firefoxSlug
+  };
+}
+
+/**
+ * Formats a catalog entry object into the exact JavaScript snippet format used in `src/shared/catalog.js`.
+ *
+ * @param {object} entry
+ * @returns {string}
+ */
+export function formatCatalogEntrySnippet(entry) {
+  const esc = (str) => String(str ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const lines = ['  {'];
+  lines.push(`    key: '${esc(entry.key)}',`);
+  lines.push(`    name: '${esc(entry.name)}',`);
+  if (Array.isArray(entry.aliases) && entry.aliases.length > 0) {
+    const formattedAliases = entry.aliases.map((a) => `'${esc(a)}'`).join(', ');
+    lines.push(`    aliases: [${formattedAliases}],`);
+  }
+  lines.push(`    chromiumId: '${esc(entry.chromiumId)}',`);
+  if (entry.edgeId) {
+    lines.push(`    edgeId: '${esc(entry.edgeId)}',`);
+  }
+  lines.push(`    firefoxId: '${esc(entry.firefoxId)}',`);
+  lines.push(`    firefoxSlug: '${esc(entry.firefoxSlug)}'`);
+  lines.push('  }');
+  return lines.join('\n');
+}
+
+/**
+ * Resolves any missing Firefox slug/GUID or Chromium ID from AMO / Chrome Web Store
+ * and returns both the structured catalog entry and formatted snippet.
+ *
+ * @param {object} item
+ * @returns {Promise<{ entry: object, snippet: string }>}
+ */
+export async function resolveFullCatalogEntry(item) {
+  const initial = buildCatalogEntry(item);
+  const extra = {};
+
+  if (!initial.firefoxId || !initial.firefoxSlug) {
+    // If we have a firefoxId, query AMO addon endpoint directly to get the exact slug
+    if (initial.firefoxId) {
+      try {
+        const res = await fetch(
+          `https://addons.mozilla.org/api/v5/addons/addon/${encodeURIComponent(initial.firefoxId)}/`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.guid) extra.firefoxId = data.guid;
+          if (data?.slug) extra.firefoxSlug = data.slug;
+        }
+      } catch {
+        // Ignore network error
+      }
+    }
+    if (!extra.firefoxSlug && !initial.firefoxSlug) {
+      const amo = await resolveFirefoxAddonFromAmo(item);
+      if (amo?.firefoxId && !initial.firefoxId) extra.firefoxId = amo.firefoxId;
+      if (amo?.firefoxSlug) extra.firefoxSlug = amo.firefoxSlug;
+    }
+  }
+
+  if (!initial.chromiumId) {
+    const cws = await resolveChromiumExtensionFromStore(item);
+    if (cws?.chromiumId) extra.chromiumId = cws.chromiumId;
+  }
+
+  const entry = buildCatalogEntry(item, extra);
+  return {
+    entry,
+    snippet: formatCatalogEntrySnippet(entry)
+  };
+}
+
 
 

@@ -501,3 +501,53 @@ input:checked + .slider:before {
   line-height: 1.5;
 }
 
+/* Popup Modal Overlay */
+.popup-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(2, 6, 23, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  z-index: 200;
+}
+
+.popup-modal-dialog {
+  width: 100%;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 20px 30px rgba(0, 0, 0, 0.6);
+}
+
+.popup-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+}
+
+.popup-code-block {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #e2e8f0;
+  overflow-x: auto;
+  white-space: pre;
+  user-select: all;
+}
+
+.popup-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+

@@ -93,6 +93,22 @@
     <main id="extensions-list" class="extensions-list">
       <div class="empty-state">Loading extensions...</div>
     </main>
+
+    <!-- Catalog JSON Popup Modal -->
+    <div id="catalog-json-modal" class="popup-modal-overlay hidden" role="dialog" aria-modal="true">
+      <div class="popup-modal-dialog">
+        <div class="popup-modal-header">
+          <strong id="catalog-json-title">Catalog Entry</strong>
+          <button type="button" id="close-catalog-json-btn" class="icon-btn" aria-label="Close">✕</button>
+        </div>
+        <pre id="catalog-json-pre" class="popup-code-block"></pre>
+        <div class="popup-modal-footer">
+          <button type="button" id="copy-catalog-json-btn" class="btn btn-sm btn-primary">
+            Copy to Clipboard
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="popup.js"></script>

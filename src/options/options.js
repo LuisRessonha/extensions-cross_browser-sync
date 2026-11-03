@@ -1,6 +1,7 @@
 import { ext } from '../shared/browser-polyfill.js';
 import { buildInitialPayloadFromLocal } from '../shared/sync-engine.js';
 import { normalizeSyncPayload } from '../shared/gist.js';
+import { buildCatalogEntry, formatCatalogEntrySnippet } from '../shared/matcher.js';
 
 let currentState = null;
 
@@ -12,6 +13,11 @@ const els = {
   openSettingsModalBtn: document.getElementById('open-settings-modal-btn'),
   closeSettingsModalBtn: document.getElementById('close-settings-modal-btn'),
   settingsModal: document.getElementById('settings-modal'),
+  catalogJsonModal: document.getElementById('catalog-json-modal'),
+  catalogJsonModalTitle: document.getElementById('catalog-json-modal-title'),
+  catalogJsonPre: document.getElementById('catalog-json-pre'),
+  closeCatalogJsonModalBtn: document.getElementById('close-catalog-json-modal-btn'),
+  copyCatalogJsonBtn: document.getElementById('copy-catalog-json-btn'),
   alertBanner: document.getElementById('alert-banner'),
   githubToken: document.getElementById('github-token'),
   toggleTokenBtn: document.getElementById('toggle-token-btn'),
@@ -398,6 +404,15 @@ function renderMatrix() {
       actRow.appendChild(autoInstallBtn);
     }
 
+    const catalogBtn = document.createElement('button');
+    catalogBtn.className = 'btn btn-sm btn-secondary';
+    catalogBtn.textContent = 'Catalog JSON';
+    catalogBtn.title = 'Show catalog object snippet for KNOWN_EXTENSIONS_CATALOG';
+    catalogBtn.addEventListener('click', () => {
+      openCatalogJsonModal(item);
+    });
+    actRow.appendChild(catalogBtn);
+
     const ignoreBtn = document.createElement('button');
     ignoreBtn.className = 'btn btn-sm btn-secondary';
     ignoreBtn.textContent = item.status === 'ignored' ? 'Unignore' : 'Ignore';
@@ -674,8 +689,57 @@ els.settingsModal.addEventListener('click', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !els.settingsModal.classList.contains('hidden')) {
-    closeSettingsModal();
+  if (e.key === 'Escape') {
+    if (!els.settingsModal.classList.contains('hidden')) {
+      closeSettingsModal();
+    }
+    if (!els.catalogJsonModal.classList.contains('hidden')) {
+      closeCatalogJsonModal();
+    }
+  }
+});
+
+async function openCatalogJsonModal(item) {
+  const initialEntry = buildCatalogEntry(item);
+  els.catalogJsonModalTitle.textContent = `Catalog Entry — ${item.name}`;
+  els.catalogJsonPre.textContent = formatCatalogEntrySnippet(initialEntry);
+  els.copyCatalogJsonBtn.textContent = 'Copy to Clipboard';
+  els.catalogJsonModal.classList.remove('hidden');
+
+  // Also resolve any missing firefoxSlug / firefoxId / chromiumId from store APIs in background
+  try {
+    const res = await sendMessage({
+      type: 'RESOLVE_CATALOG_SNIPPET',
+      item
+    });
+    if (res?.snippet && !els.catalogJsonModal.classList.contains('hidden')) {
+      els.catalogJsonPre.textContent = res.snippet;
+    }
+  } catch {
+    // Keep initial snippet on error
+  }
+}
+
+function closeCatalogJsonModal() {
+  els.catalogJsonModal.classList.add('hidden');
+}
+
+els.closeCatalogJsonModalBtn.addEventListener('click', closeCatalogJsonModal);
+els.catalogJsonModal.addEventListener('click', (e) => {
+  if (e.target === els.catalogJsonModal) {
+    closeCatalogJsonModal();
+  }
+});
+
+els.copyCatalogJsonBtn.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(els.catalogJsonPre.textContent);
+    els.copyCatalogJsonBtn.textContent = 'Copied!';
+    setTimeout(() => {
+      els.copyCatalogJsonBtn.textContent = 'Copy to Clipboard';
+    }, 2000);
+  } catch (err) {
+    showAlert(`Failed to copy: ${err.message}`, true);
   }
 });
 

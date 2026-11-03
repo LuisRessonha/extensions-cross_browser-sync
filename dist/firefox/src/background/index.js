@@ -7,7 +7,8 @@ import {
 import {
   normalizeExtensionName,
   resolveCanonicalKey,
-  resolveDirectInstallTarget
+  resolveDirectInstallTarget,
+  resolveFullCatalogEntry
 } from '../shared/matcher.js';
 import {
   getSettings,
@@ -379,6 +380,12 @@ ext?.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
         case 'GET_SYNC_LOGS': {
           const logs = await getSyncLogs();
           sendResponse({ ok: true, logs });
+          break;
+        }
+
+        case 'RESOLVE_CATALOG_SNIPPET': {
+          const resolved = await resolveFullCatalogEntry(message.item);
+          sendResponse({ ok: true, ...resolved });
           break;
         }
 

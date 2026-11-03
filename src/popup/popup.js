@@ -1,4 +1,5 @@
 import { ext } from '../shared/browser-polyfill.js';
+import { buildCatalogEntry, formatCatalogEntrySnippet } from '../shared/matcher.js';
 
 let currentState = null;
 let activeTab = 'all';
@@ -22,6 +23,11 @@ const els = {
   searchInput: document.getElementById('search-input'),
   installAllMissingBtn: document.getElementById('install-all-missing-btn'),
   extensionsList: document.getElementById('extensions-list'),
+  catalogJsonModal: document.getElementById('catalog-json-modal'),
+  catalogJsonTitle: document.getElementById('catalog-json-title'),
+  catalogJsonPre: document.getElementById('catalog-json-pre'),
+  closeCatalogJsonBtn: document.getElementById('close-catalog-json-btn'),
+  copyCatalogJsonBtn: document.getElementById('copy-catalog-json-btn'),
   tabs: Array.from(document.querySelectorAll('.tab'))
 };
 
@@ -284,6 +290,16 @@ function renderDashboard() {
       actions.appendChild(label);
     }
 
+    // Catalog JSON button
+    const catalogBtn = document.createElement('button');
+    catalogBtn.className = 'icon-btn';
+    catalogBtn.title = 'Show catalog entry JSON snippet';
+    catalogBtn.textContent = '{}';
+    catalogBtn.addEventListener('click', () => {
+      openCatalogJsonModal(item);
+    });
+    actions.appendChild(catalogBtn);
+
     // Ignore / Unignore button
     const ignoreBtn = document.createElement('button');
     ignoreBtn.className = 'icon-btn';
@@ -417,6 +433,48 @@ for (const tabBtn of els.tabs) {
 els.searchInput.addEventListener('input', (e) => {
   searchQuery = e.target.value.trim();
   renderDashboard();
+});
+
+async function openCatalogJsonModal(item) {
+  const initialEntry = buildCatalogEntry(item);
+  els.catalogJsonTitle.textContent = item.name;
+  els.catalogJsonPre.textContent = formatCatalogEntrySnippet(initialEntry);
+  els.copyCatalogJsonBtn.textContent = 'Copy to Clipboard';
+  els.catalogJsonModal.classList.remove('hidden');
+
+  try {
+    const res = await sendMessage({
+      type: 'RESOLVE_CATALOG_SNIPPET',
+      item
+    });
+    if (res?.snippet && !els.catalogJsonModal.classList.contains('hidden')) {
+      els.catalogJsonPre.textContent = res.snippet;
+    }
+  } catch {
+    // Keep initial snippet
+  }
+}
+
+els.closeCatalogJsonBtn.addEventListener('click', () => {
+  els.catalogJsonModal.classList.add('hidden');
+});
+
+els.catalogJsonModal.addEventListener('click', (e) => {
+  if (e.target === els.catalogJsonModal) {
+    els.catalogJsonModal.classList.add('hidden');
+  }
+});
+
+els.copyCatalogJsonBtn.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(els.catalogJsonPre.textContent);
+    els.copyCatalogJsonBtn.textContent = 'Copied!';
+    setTimeout(() => {
+      els.copyCatalogJsonBtn.textContent = 'Copy to Clipboard';
+    }, 2000);
+  } catch (err) {
+    showToast(err.message, true);
+  }
 });
 
 els.installAllMissingBtn.addEventListener('click', async () => {

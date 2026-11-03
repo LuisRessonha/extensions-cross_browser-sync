@@ -198,6 +198,20 @@ code {
   gap: 18px;
 }
 
+.catalog-code-block {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #e2e8f0;
+  overflow-x: auto;
+  white-space: pre;
+  user-select: all;
+}
+
 .card {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
