@@ -25,6 +25,7 @@ import {
 import {
   buildInitialPayloadFromLocal,
   clearGistData,
+  enrichDashboardItemsIds,
   getDashboardState,
   isCurrentlyApplyingRemoteState,
   performSync,
@@ -416,6 +417,13 @@ ext?.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
         case 'RESOLVE_CATALOG_SNIPPET': {
           const resolved = await resolveFullCatalogEntry(message.item);
           sendResponse({ ok: true, ...resolved });
+          break;
+        }
+
+        case 'ENRICH_DASHBOARD_IDS': {
+          const changed = await enrichDashboardItemsIds(message.items || []);
+          const state = changed ? await getDashboardState({ refreshRemote: false }) : null;
+          sendResponse({ ok: true, changed, data: state });
           break;
         }
 

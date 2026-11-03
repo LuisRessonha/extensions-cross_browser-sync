@@ -54,7 +54,10 @@ export function buildSyncRecordFromLocal(localExt, existingRemote, browserEnv, s
   const catalog = findCatalogEntry({ key, id: localExt.id, name: localExt.name });
 
   const prevIds = existingRemote?.ids || {};
-  const ids = { ...prevIds };
+  const ids = {};
+  if (prevIds.chromium) ids.chromium = prevIds.chromium;
+  if (prevIds.edge) ids.edge = prevIds.edge;
+  if (prevIds.firefox) ids.firefox = prevIds.firefox;
 
   if (browserEnv.family === 'firefox') {
     ids.firefox = localExt.id;
@@ -73,6 +76,7 @@ export function buildSyncRecordFromLocal(localExt, existingRemote, browserEnv, s
   const customIds = settings?.customBrowserIds?.[key];
   if (customIds) {
     if (customIds.chromium) ids.chromium = customIds.chromium;
+    if (customIds.edge) ids.edge = customIds.edge;
     if (customIds.firefox) ids.firefox = customIds.firefox;
   }
 
@@ -88,6 +92,9 @@ export function buildSyncRecordFromLocal(localExt, existingRemote, browserEnv, s
     storeUrls.firefox = `https://addons.mozilla.org/firefox/addon/${catalog.firefoxSlug}/`;
   } else if (ids.firefox && !storeUrls.firefox) {
     storeUrls.firefox = `https://addons.mozilla.org/firefox/addon/${encodeURIComponent(ids.firefox)}/`;
+  }
+  if (ids.edge && isChromiumExtensionId(ids.edge) && !storeUrls.edge) {
+    storeUrls.edge = `https://microsoftedge.microsoft.com/addons/detail/${ids.edge}`;
   }
 
   const localTouch = localMeta?.updatedAtByKey?.[key];
@@ -261,18 +268,50 @@ export function computeSyncComparison({
     const catalog = findCatalogEntry({
       key: remKey,
       name: remRecord.name,
-      id: remRecord.ids?.chromium || remRecord.ids?.firefox
+      id: remRecord.ids?.chromium || remRecord.ids?.firefox || remRecord.ids?.edge
     });
-    const mergedIds = {
-      ...(catalog?.chromiumId ? { chromium: catalog.chromiumId } : {}),
-      ...(catalog?.firefoxId ? { firefox: catalog.firefoxId } : {}),
-      ...(remRecord.ids || {}),
-      ...(customIds?.chromium ? { chromium: customIds.chromium } : {}),
-      ...(customIds?.firefox ? { firefox: customIds.firefox } : {})
-    };
+    const mergedIds = {};
+    if (catalog?.chromiumId) mergedIds.chromium = catalog.chromiumId;
+    if (catalog?.edgeId) mergedIds.edge = catalog.edgeId;
+    if (catalog?.firefoxId) mergedIds.firefox = catalog.firefoxId;
+    if (remRecord.ids?.chromium) mergedIds.chromium = remRecord.ids.chromium;
+    if (remRecord.ids?.edge) mergedIds.edge = remRecord.ids.edge;
+    if (remRecord.ids?.firefox) mergedIds.firefox = remRecord.ids.firefox;
+    if (customIds?.chromium) mergedIds.chromium = customIds.chromium;
+    if (customIds?.edge) mergedIds.edge = customIds.edge;
+    if (customIds?.firefox) mergedIds.firefox = customIds.firefox;
+
+    const mergedStoreUrls = { ...(remRecord.storeUrls || {}) };
+    if (customIds?.chromiumUrl) {
+      mergedStoreUrls.chromium = customIds.chromiumUrl;
+    } else if (
+      !mergedStoreUrls.chromium &&
+      mergedIds.chromium &&
+      isChromiumExtensionId(mergedIds.chromium)
+    ) {
+      mergedStoreUrls.chromium = `https://chromewebstore.google.com/detail/${mergedIds.chromium}`;
+    }
+    if (customIds?.firefoxUrl) {
+      mergedStoreUrls.firefox = customIds.firefoxUrl;
+    } else if (!mergedStoreUrls.firefox && catalog?.firefoxSlug) {
+      mergedStoreUrls.firefox = `https://addons.mozilla.org/firefox/addon/${catalog.firefoxSlug}/`;
+    } else if (!mergedStoreUrls.firefox && mergedIds.firefox) {
+      mergedStoreUrls.firefox = `https://addons.mozilla.org/firefox/addon/${encodeURIComponent(
+        mergedIds.firefox
+      )}/`;
+    }
+    if (
+      !mergedStoreUrls.edge &&
+      mergedIds.edge &&
+      isChromiumExtensionId(mergedIds.edge)
+    ) {
+      mergedStoreUrls.edge = `https://microsoftedge.microsoft.com/addons/detail/${mergedIds.edge}`;
+    }
+
     const mergedRecord = {
       ...remRecord,
-      ids: mergedIds
+      ids: mergedIds,
+      storeUrls: mergedStoreUrls
     };
 
     const ignored = isExtensionIgnored(mergedRecord, remKey, settings.ignoredKeys);
@@ -294,7 +333,7 @@ export function computeSyncComparison({
         mayDisable: true,
         installType: null,
         ids: mergedIds,
-        storeUrls: remRecord.storeUrls || {},
+        storeUrls: mergedStoreUrls,
         storeInfo,
         updatedAt: remRecord.updatedAt || null
       });
@@ -316,7 +355,7 @@ export function computeSyncComparison({
       mayDisable: true,
       installType: null,
       ids: mergedIds,
-      storeUrls: remRecord.storeUrls || {},
+      storeUrls: mergedStoreUrls,
       storeInfo,
       updatedAt: remRecord.updatedAt || null
     });
@@ -831,6 +870,75 @@ export async function getDashboardState(options = {}) {
     remoteError,
     comparison
   };
+}
+
+/**
+ * Resolves any missing Chromium or Firefox Browser IDs and Store URLs for Dashboard items
+ * (including local-only extensions) via Mozilla AMO and Chrome Web Store, and caches them in settings.
+ *
+ * @param {Array<object>} items
+ * @returns {Promise<boolean>} True if any new ID or store URL was resolved
+ */
+export async function enrichDashboardItemsIds(items = []) {
+  if (!Array.isArray(items) || items.length === 0) return false;
+
+  const settings = await getSettings();
+  const customBrowserIds = { ...(settings.customBrowserIds || {}) };
+  const cached = await getRemoteCache();
+  let changed = false;
+
+  for (const item of items) {
+    if (!item?.key || item.status === 'ignored') continue;
+
+    const hasCr = Boolean(item.ids?.chromium);
+    const hasFf = Boolean(item.ids?.firefox);
+    if (hasCr && hasFf) continue;
+
+    const existing = { ...(customBrowserIds[item.key] || {}) };
+    let itemChanged = false;
+
+    if (!hasFf && !existing.firefox) {
+      const amo = await resolveFirefoxAddonFromAmo(item);
+      if (amo?.firefoxId) {
+        existing.firefox = amo.firefoxId;
+        if (amo.firefoxUrl) existing.firefoxUrl = amo.firefoxUrl;
+        itemChanged = true;
+      }
+    }
+
+    if (!hasCr && !existing.chromium) {
+      const cws = await resolveChromiumExtensionFromStore(item);
+      if (cws?.chromiumId) {
+        existing.chromium = cws.chromiumId;
+        if (cws.chromiumUrl) existing.chromiumUrl = cws.chromiumUrl;
+        itemChanged = true;
+      }
+    }
+
+    if (itemChanged) {
+      customBrowserIds[item.key] = existing;
+      changed = true;
+
+      if (cached?.extensions?.[item.key]) {
+        const rec = cached.extensions[item.key];
+        rec.ids = { ...(rec.ids || {}) };
+        rec.storeUrls = { ...(rec.storeUrls || {}) };
+        if (existing.chromium) rec.ids.chromium = existing.chromium;
+        if (existing.firefox) rec.ids.firefox = existing.firefox;
+        if (existing.chromiumUrl) rec.storeUrls.chromium = existing.chromiumUrl;
+        if (existing.firefoxUrl) rec.storeUrls.firefox = existing.firefoxUrl;
+      }
+    }
+  }
+
+  if (changed) {
+    await saveSettings({ customBrowserIds });
+    if (cached) {
+      await saveRemoteCache(cached);
+    }
+  }
+
+  return changed;
 }
 
 /**

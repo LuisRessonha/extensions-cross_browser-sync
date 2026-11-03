@@ -241,16 +241,23 @@
 
           <!-- Card 3: Backup & Restore + Activity Log -->
           <section class="card">
-            <h2>3. Local JSON Backup &amp; Activity Log</h2>
+            <h2>3. Settings &amp; Profile Backup</h2>
             <p class="card-desc">
-              Export your cross-browser sync profile to a JSON file or import a snapshot manually.
+              Export or import all your extension settings (tokens, Gist ID, Git repo, sync preferences, ignored extensions, and custom ID mappings), or back up your extension list snapshot.
             </p>
-            <div class="button-row">
-              <button type="button" id="export-json-btn" class="btn btn-secondary btn-sm">
-                Export JSON ↓
+            <div class="button-row" style="margin-bottom: 10px;">
+              <button type="button" id="export-settings-btn" class="btn btn-primary btn-sm">
+                Export Settings ↓
               </button>
               <label class="btn btn-secondary btn-sm file-btn">
-                Import JSON ↑
+                Import Settings ↑
+                <input type="file" id="import-settings-input" accept=".json,application/json" hidden />
+              </label>
+              <button type="button" id="export-json-btn" class="btn btn-secondary btn-sm">
+                Export Extensions JSON ↓
+              </button>
+              <label class="btn btn-secondary btn-sm file-btn">
+                Import Extensions JSON ↑
                 <input type="file" id="import-json-input" accept=".json,application/json" hidden />
               </label>
             </div>

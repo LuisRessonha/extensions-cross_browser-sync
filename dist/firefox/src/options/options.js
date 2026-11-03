@@ -3,6 +3,7 @@ import { buildInitialPayloadFromLocal } from '../shared/sync-engine.js';
 import { normalizeSyncPayload } from '../shared/gist.js';
 import {
   buildCatalogEntry,
+  findCatalogEntry,
   formatCatalogEntrySnippet,
   getStoreInstallInfo,
   parseGitRepoUrl
@@ -45,6 +46,8 @@ const els = {
   syncDisabledExtensions: document.getElementById('sync-disabled-extensions'),
   includeDevExtensions: document.getElementById('include-dev-extensions'),
   savePrefsBtn: document.getElementById('save-prefs-btn'),
+  exportSettingsBtn: document.getElementById('export-settings-btn'),
+  importSettingsInput: document.getElementById('import-settings-input'),
   exportJsonBtn: document.getElementById('export-json-btn'),
   importJsonInput: document.getElementById('import-json-input'),
   syncLogList: document.getElementById('sync-log-list'),
@@ -298,15 +301,33 @@ function renderMatrix() {
       tdKey.appendChild(code);
     }
 
-    // Col 3: Browser IDs (Chromium / Firefox) with manual edit support when missing or overridden
+    // Col 3: Browser IDs (Chromium / Firefox / Edge) with Store links and manual edit support
     const tdIds = document.createElement('td');
     const idList = document.createElement('div');
     idList.className = 'id-list';
 
-    const initialCr = item.ids?.chromium || '';
-    const initialFf = item.ids?.firefox || '';
-    const crStore = getStoreInstallInfo(item, 'chromium', 'chrome');
-    const ffStore = getStoreInstallInfo(item, 'firefox', 'firefox');
+    const catalogEntry = findCatalogEntry({
+      key: item.key,
+      name: item.name,
+      id: item.localId || item.ids?.chromium || item.ids?.firefox || item.ids?.edge
+    });
+
+    const initialCr = item.ids?.chromium || catalogEntry?.chromiumId || '';
+    const initialFf = item.ids?.firefox || catalogEntry?.firefoxId || '';
+    const initialEd = item.ids?.edge || catalogEntry?.edgeId || '';
+
+    const itemWithAllIds = {
+      ...item,
+      ids: {
+        ...(item.ids || {}),
+        ...(initialCr ? { chromium: initialCr } : {}),
+        ...(initialFf ? { firefox: initialFf } : {}),
+        ...(initialEd ? { edge: initialEd } : {})
+      }
+    };
+
+    const crStore = getStoreInstallInfo(itemWithAllIds, 'chromium', 'chrome');
+    const ffStore = getStoreInstallInfo(itemWithAllIds, 'firefox', 'firefox');
 
     const crRow = document.createElement('div');
     crRow.className = 'id-edit-row';
@@ -360,6 +381,38 @@ function renderMatrix() {
       ffRow.appendChild(ffStoreBtn);
     }
 
+    idList.appendChild(crRow);
+    idList.appendChild(ffRow);
+
+    if (initialEd) {
+      const edRow = document.createElement('div');
+      edRow.className = 'id-edit-row';
+      const edLabel = document.createElement('span');
+      edLabel.className = 'id-prefix';
+      edLabel.textContent = 'Ed:';
+      const edInput = document.createElement('input');
+      edInput.type = 'text';
+      edInput.className = 'id-input';
+      edInput.value = initialEd;
+      edInput.readOnly = true;
+      edInput.title = `Edge Add-ons ID: ${initialEd}`;
+      edRow.appendChild(edLabel);
+      edRow.appendChild(edInput);
+
+      const edUrl =
+        item.storeUrls?.edge ||
+        `https://microsoftedge.microsoft.com/addons/detail/${encodeURIComponent(initialEd)}`;
+      const edStoreBtn = document.createElement('a');
+      edStoreBtn.href = edUrl;
+      edStoreBtn.target = '_blank';
+      edStoreBtn.rel = 'noopener';
+      edStoreBtn.className = 'btn btn-secondary id-store-btn';
+      edStoreBtn.textContent = 'Store ↗';
+      edStoreBtn.title = 'Open in Edge Add-ons';
+      edRow.appendChild(edStoreBtn);
+      idList.appendChild(edRow);
+    }
+
     const saveIdsBtn = document.createElement('button');
     saveIdsBtn.className = 'btn btn-secondary btn-sm hidden';
     saveIdsBtn.textContent = 'Save IDs';
@@ -401,8 +454,6 @@ function renderMatrix() {
       }
     });
 
-    idList.appendChild(crRow);
-    idList.appendChild(ffRow);
     idList.appendChild(saveIdsBtn);
     tdIds.appendChild(idList);
 
@@ -933,6 +984,110 @@ els.matrixInstallMissingBtn.addEventListener('click', async () => {
   }
 });
 
+// Export Settings
+els.exportSettingsBtn.addEventListener('click', () => {
+  try {
+    const baseSettings = currentState?.settings || {};
+    const exportedSettings = {
+      ...baseSettings,
+      githubToken: els.githubToken.value.trim(),
+      gistId: els.gistId.value.trim(),
+      deviceName: els.deviceName.value.trim(),
+      gitRepoUrl: els.gitRepoUrl.value.trim(),
+      gitRepoToken: els.gitRepoToken.value.trim(),
+      gitRepoBranch: els.gitRepoBranch.value.trim(),
+      autoSyncMinutes: Number(els.autoSyncMinutes.value) || 0,
+      autoPushOnChange: els.autoPushOnChange.checked,
+      autoApplyEnabledState: els.autoApplyEnabled.checked,
+      syncDisabledExtensions: els.syncDisabledExtensions.checked,
+      includeDevelopmentExtensions: els.includeDevExtensions.checked
+    };
+
+    const payload = {
+      app: 'extensions-cross_browser-sync-settings',
+      exportedAt: new Date().toISOString(),
+      settings: exportedSettings
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `extensions-cross_browser-sync-settings-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showAlert('Exported all settings to JSON file.');
+  } catch (err) {
+    showAlert(`Failed to export settings: ${err.message}`, true);
+  }
+});
+
+// Import Settings
+els.importSettingsInput.addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const raw = JSON.parse(text);
+    const incoming =
+      raw && typeof raw.settings === 'object' && raw.settings !== null ? raw.settings : raw;
+
+    if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) {
+      throw new Error('Invalid settings JSON file.');
+    }
+
+    const allowedKeys = [
+      'githubToken',
+      'gistId',
+      'gitRepoUrl',
+      'gitRepoToken',
+      'gitRepoBranch',
+      'deviceName',
+      'autoSyncMinutes',
+      'autoPushOnChange',
+      'autoApplyEnabledState',
+      'syncDisabledExtensions',
+      'includeDevelopmentExtensions',
+      'ignoredKeys',
+      'customMappings',
+      'customBrowserIds'
+    ];
+
+    const nextSettings = {};
+    for (const k of allowedKeys) {
+      if (k in incoming) {
+        nextSettings[k] = incoming[k];
+      }
+    }
+
+    if (Object.keys(nextSettings).length === 0) {
+      throw new Error('No recognized settings keys found in the imported file.');
+    }
+
+    const saveRes = await sendMessage({
+      type: 'SAVE_SETTINGS',
+      settings: nextSettings
+    });
+    currentState = saveRes.data;
+    populateSettingsForm(currentState.settings, currentState.browserEnv);
+
+    if (currentState.settings.githubToken && currentState.settings.gistId) {
+      const refreshed = await sendMessage({
+        type: 'GET_DASHBOARD_STATE',
+        refreshRemote: true
+      });
+      currentState = refreshed.data;
+    }
+
+    renderMatrix();
+    showAlert('Imported and saved all settings successfully!');
+  } catch (err) {
+    showAlert(`Failed to import settings: ${err.message}`, true);
+  } finally {
+    e.target.value = '';
+  }
+});
+
 // Export JSON
 els.exportJsonBtn.addEventListener('click', async () => {
   try {
@@ -980,6 +1135,26 @@ els.importJsonInput.addEventListener('change', async (e) => {
     populateSettingsForm(currentState.settings, currentState.browserEnv);
     renderMatrix();
     await refreshSyncLogs();
+
+    // Automatically discover any missing other-browser IDs & store links in the background
+    const incompleteItems = (currentState?.comparison?.items || []).filter(
+      (i) => i.status !== 'ignored' && (!i.ids?.chromium || !i.ids?.firefox)
+    );
+    if (incompleteItems.length > 0) {
+      sendMessage({
+        type: 'ENRICH_DASHBOARD_IDS',
+        items: incompleteItems
+      })
+        .then((enrichRes) => {
+          if (enrichRes?.changed && enrichRes.data) {
+            currentState = enrichRes.data;
+            renderMatrix();
+          }
+        })
+        .catch(() => {
+          // Non-blocking background enrichment
+        });
+    }
   } catch (err) {
     showAlert(err.message, true);
   }
