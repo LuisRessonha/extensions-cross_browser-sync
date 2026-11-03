@@ -1,0 +1,66 @@
+name: Download & Update Firefox XPI Files
+
+on:
+  workflow_dispatch:
+    inputs:
+      gist_id:
+        description: 'Optional GitHub Gist ID to also include synced Firefox extensions from'
+        required: false
+        type: string
+      force:
+        description: 'Force re-download all XPI files even if version matches'
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    # Run weekly on Mondays at 04:00 UTC to keep XPI files updated
+    - cron: '0 4 * * 1'
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'src/shared/catalog.js'
+      - 'scripts/download-xpi.mjs'
+      - '.github/workflows/update-xpi-files.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  update-xpi:
+    name: Download / Update Firefox XPIs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Download and update Firefox XPI files
+        env:
+          GIST_ID: ${{ inputs.gist_id || vars.GIST_ID }}
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ inputs.force }}" = "true" ]; then
+            node scripts/download-xpi.mjs --force
+          else
+            node scripts/download-xpi.mjs
+          fi
+
+      - name: Commit and push updated XPI files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add xpi-files/
+          if git diff --staged --quiet; then
+            echo "No changes in xpi-files/ to commit."
+          else
+            git commit -m "chore(xpi): download/update Firefox extension XPI files"
+            git push
+          fi
+
