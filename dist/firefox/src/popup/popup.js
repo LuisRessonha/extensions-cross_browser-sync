@@ -1,5 +1,4 @@
 import { ext } from '../shared/browser-polyfill.js';
-import { buildCatalogEntry, formatCatalogEntrySnippet } from '../shared/matcher.js';
 
 let currentState = null;
 let activeTab = 'all';
@@ -15,7 +14,6 @@ const els = {
   syncMergeBtn: document.getElementById('sync-merge-btn'),
   syncPushBtn: document.getElementById('sync-push-btn'),
   syncPullBtn: document.getElementById('sync-pull-btn'),
-  syncClearBtn: document.getElementById('sync-clear-btn'),
   countAll: document.getElementById('count-all'),
   countMissing: document.getElementById('count-missing'),
   countDiff: document.getElementById('count-diff'),
@@ -24,11 +22,6 @@ const els = {
   searchInput: document.getElementById('search-input'),
   installAllMissingBtn: document.getElementById('install-all-missing-btn'),
   extensionsList: document.getElementById('extensions-list'),
-  catalogJsonModal: document.getElementById('catalog-json-modal'),
-  catalogJsonTitle: document.getElementById('catalog-json-title'),
-  catalogJsonPre: document.getElementById('catalog-json-pre'),
-  closeCatalogJsonBtn: document.getElementById('close-catalog-json-btn'),
-  copyCatalogJsonBtn: document.getElementById('copy-catalog-json-btn'),
   tabs: Array.from(document.querySelectorAll('.tab'))
 };
 
@@ -295,16 +288,6 @@ function renderDashboard() {
       actions.appendChild(label);
     }
 
-    // Catalog JSON button
-    const catalogBtn = document.createElement('button');
-    catalogBtn.className = 'icon-btn';
-    catalogBtn.title = 'Show catalog entry JSON snippet';
-    catalogBtn.textContent = '{}';
-    catalogBtn.addEventListener('click', () => {
-      openCatalogJsonModal(item);
-    });
-    actions.appendChild(catalogBtn);
-
     // Ignore / Unignore button
     const ignoreBtn = document.createElement('button');
     ignoreBtn.className = 'icon-btn';
@@ -326,31 +309,6 @@ function renderDashboard() {
       }
     });
     actions.appendChild(ignoreBtn);
-
-    // Remove from Gist button
-    if (item.inGist) {
-      const removeGistBtn = document.createElement('button');
-      removeGistBtn.className = 'icon-btn';
-      removeGistBtn.title = `Remove "${item.name}" from GitHub Gist`;
-      removeGistBtn.textContent = '✕';
-      removeGistBtn.addEventListener('click', async () => {
-        try {
-          removeGistBtn.disabled = true;
-          const res = await sendMessage({
-            type: 'REMOVE_FROM_GIST',
-            key: item.key,
-            name: item.name
-          });
-          currentState = res.data;
-          renderDashboard();
-          showToast(`Removed "${item.name}" from Gist.`);
-        } catch (err) {
-          removeGistBtn.disabled = false;
-          showToast(err.message, true);
-        }
-      });
-      actions.appendChild(removeGistBtn);
-    }
 
     card.appendChild(left);
     card.appendChild(actions);
@@ -407,25 +365,6 @@ els.syncMergeBtn.addEventListener('click', () => runSync('merge'));
 els.syncPushBtn.addEventListener('click', () => runSync('push'));
 els.syncPullBtn.addEventListener('click', () => runSync('pull'));
 
-els.syncClearBtn.addEventListener('click', async () => {
-  const confirmed = window.confirm(
-    'Clear all saved extension data from your GitHub Gist?'
-  );
-  if (!confirmed) return;
-
-  try {
-    els.syncClearBtn.disabled = true;
-    const res = await sendMessage({ type: 'CLEAR_GIST_DATA' });
-    currentState = res.data;
-    renderDashboard();
-    showToast('Cleared all saved extension data from GitHub Gist.');
-  } catch (err) {
-    showToast(err.message, true);
-  } finally {
-    els.syncClearBtn.disabled = false;
-  }
-});
-
 for (const tabBtn of els.tabs) {
   tabBtn.addEventListener('click', () => {
     for (const t of els.tabs) t.classList.remove('active');
@@ -438,48 +377,6 @@ for (const tabBtn of els.tabs) {
 els.searchInput.addEventListener('input', (e) => {
   searchQuery = e.target.value.trim();
   renderDashboard();
-});
-
-async function openCatalogJsonModal(item) {
-  const initialEntry = buildCatalogEntry(item);
-  els.catalogJsonTitle.textContent = item.name;
-  els.catalogJsonPre.textContent = formatCatalogEntrySnippet(initialEntry);
-  els.copyCatalogJsonBtn.textContent = 'Copy to Clipboard';
-  els.catalogJsonModal.classList.remove('hidden');
-
-  try {
-    const res = await sendMessage({
-      type: 'RESOLVE_CATALOG_SNIPPET',
-      item
-    });
-    if (res?.snippet && !els.catalogJsonModal.classList.contains('hidden')) {
-      els.catalogJsonPre.textContent = res.snippet;
-    }
-  } catch {
-    // Keep initial snippet
-  }
-}
-
-els.closeCatalogJsonBtn.addEventListener('click', () => {
-  els.catalogJsonModal.classList.add('hidden');
-});
-
-els.catalogJsonModal.addEventListener('click', (e) => {
-  if (e.target === els.catalogJsonModal) {
-    els.catalogJsonModal.classList.add('hidden');
-  }
-});
-
-els.copyCatalogJsonBtn.addEventListener('click', async () => {
-  try {
-    await navigator.clipboard.writeText(els.catalogJsonPre.textContent);
-    els.copyCatalogJsonBtn.textContent = 'Copied!';
-    setTimeout(() => {
-      els.copyCatalogJsonBtn.textContent = 'Copy to Clipboard';
-    }, 2000);
-  } catch (err) {
-    showToast(err.message, true);
-  }
 });
 
 els.installAllMissingBtn.addEventListener('click', async () => {
