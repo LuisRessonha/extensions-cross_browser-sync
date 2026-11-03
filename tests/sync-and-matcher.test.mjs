@@ -9,7 +9,9 @@ import {
   getStoreInstallInfo,
   normalizeExtensionName,
   parseAndResolveManualBrowserId,
-  resolveCanonicalKey
+  parseGitRepoUrl,
+  resolveCanonicalKey,
+  resolveRepoXpiInstallTarget
 } from '../src/shared/matcher.js';
 import {
   computeSyncComparison,
@@ -277,6 +279,30 @@ test('buildCatalogEntry and formatCatalogEntrySnippet produce catalog.js snippet
     firefoxSlug: 'bitwarden-password-manager',
     xpiFile: 'xpi-files/bitwarden.xpi'
   }`
+  );
+});
+
+test('parseGitRepoUrl and resolveRepoXpiInstallTarget validate git repo settings', async () => {
+  assert.deepEqual(
+    parseGitRepoUrl('https://github.com/LuisRessonha/extensions-cross_browser-sync'),
+    {
+      owner: 'LuisRessonha',
+      repo: 'extensions-cross_browser-sync',
+      branch: ''
+    }
+  );
+  assert.deepEqual(
+    parseGitRepoUrl('LuisRessonha/extensions-cross_browser-sync', 'main'),
+    {
+      owner: 'LuisRessonha',
+      repo: 'extensions-cross_browser-sync',
+      branch: 'main'
+    }
+  );
+
+  await assert.rejects(
+    () => resolveRepoXpiInstallTarget({ key: 'ublock-origin', name: 'uBlock Origin' }, {}),
+    /Git repository not configured/
   );
 });
 

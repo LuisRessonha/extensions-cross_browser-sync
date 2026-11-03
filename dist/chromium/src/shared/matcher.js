@@ -731,5 +731,164 @@ export async function resolveFullCatalogEntry(item) {
   };
 }
 
+/**
+ * Parses a GitHub repository URL or `owner/repo` shorthand into `{ owner, repo, branch }`.
+ *
+ * @param {string} rawRepoUrl
+ * @param {string} [explicitBranch='']
+ * @returns {{ owner: string, repo: string, branch: string } | null}
+ */
+export function parseGitRepoUrl(rawRepoUrl, explicitBranch = '') {
+  if (!rawRepoUrl || typeof rawRepoUrl !== 'string') return null;
+  const trimmed = rawRepoUrl.trim().replace(/\/+$/, '');
+  if (!trimmed) return null;
+
+  // Match full GitHub URL: https://github.com/owner/repo or https://github.com/owner/repo/tree/branch
+  const ghMatch = trimmed.match(
+    /^https?:\/\/(?:www\.)?github\.com\/([^/]+)\/([^/]+?)(?:\.git)?(?:\/tree\/([^/?#]+))?$/i
+  );
+  if (ghMatch) {
+    return {
+      owner: ghMatch[1],
+      repo: ghMatch[2],
+      branch: explicitBranch.trim() || ghMatch[3] || ''
+    };
+  }
+
+  // Match shorthand: owner/repo
+  const shortMatch = trimmed.match(/^([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+?)(?:\.git)?$/);
+  if (shortMatch) {
+    return {
+      owner: shortMatch[1],
+      repo: shortMatch[2],
+      branch: explicitBranch.trim() || ''
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Resolves the direct `.xpi` download URL from the configured Git repository's `xpi-files/` folder.
+ * Requires a defined Git repository in settings (URL or Access Token).
+ *
+ * @param {object} record Extension item
+ * @param {object} settings Stored extension settings
+ * @returns {Promise<{ installUrl: string, xpiFile: string, repo: string, isDirectPackage: boolean }>}
+ */
+export async function resolveRepoXpiInstallTarget(record, settings = {}) {
+  const repoUrlInput = (settings.gitRepoUrl || '').trim();
+  const token = (settings.gitRepoToken || settings.githubToken || '').trim();
+  const branchInput = (settings.gitRepoBranch || '').trim();
+
+  if (!repoUrlInput && !token) {
+    throw new Error(
+      'Git repository not configured. Please define a Git Repo URL or Access Token in Settings.'
+    );
+  }
+
+  const baseHeaders = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
+  const authHeaders = token
+    ? { ...baseHeaders, Authorization: `Bearer ${token}` }
+    : baseHeaders;
+
+  let parsedRepo = parseGitRepoUrl(repoUrlInput, branchInput);
+
+  // If no repo URL was entered, discover the user's repo via Access Token
+  if (!parsedRepo) {
+    if (repoUrlInput) {
+      throw new Error(
+        `Invalid Git repository URL "${repoUrlInput}". Use "https://github.com/owner/repo" or "owner/repo".`
+      );
+    }
+    const userRes = await fetch('https://api.github.com/user', {
+      headers: authHeaders
+    });
+    if (!userRes.ok) {
+      throw new Error(
+        `Could not resolve GitHub user from token (HTTP ${userRes.status}). Please set the Git Repo URL in Settings.`
+      );
+    }
+    const userData = await userRes.json();
+    if (!userData?.login) {
+      throw new Error('Could not determine GitHub username from token. Please set the Git Repo URL.');
+    }
+    parsedRepo = {
+      owner: userData.login,
+      repo: 'extensions-cross_browser-sync',
+      branch: branchInput
+    };
+  }
+
+  const { owner, repo, branch } = parsedRepo;
+  const catalogEntry = findCatalogEntry({
+    key: record?.key,
+    name: record?.name,
+    id: record?.localId || record?.ids?.chromium || record?.ids?.firefox || record?.ids?.edge
+  });
+
+  const safeKey = String(record?.key || catalogEntry?.key || resolveCanonicalKey(record || {}))
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  const rawXpiPath = (catalogEntry?.xpiFile || record?.xpiFile || `xpi-files/${safeKey}.xpi`).replace(
+    /^\/+/,
+    ''
+  );
+  const xpiFilePath = rawXpiPath.startsWith('xpi-files/')
+    ? rawXpiPath
+    : `xpi-files/${rawXpiPath.replace(/^xpi-files\/+/i, '')}`;
+
+  const encodedPath = xpiFilePath
+    .split('/')
+    .map((seg) => encodeURIComponent(seg))
+    .join('/');
+  const refQuery = branch ? `?ref=${encodeURIComponent(branch)}` : '';
+  const contentsUrl = `https://api.github.com/repos/${encodeURIComponent(
+    owner
+  )}/${encodeURIComponent(repo)}/contents/${encodedPath}${refQuery}`;
+
+  let res = await fetch(contentsUrl, { headers: authHeaders });
+  if ((res.status === 401 || res.status === 403) && token) {
+    // Retry unauthenticated in case the repository is public and the token only has `gist` scope
+    res = await fetch(contentsUrl, { headers: baseHeaders });
+  }
+
+  if (res.ok) {
+    const data = await res.json();
+    if (data?.download_url) {
+      return {
+        installUrl: data.download_url,
+        xpiFile: xpiFilePath,
+        repo: `${owner}/${repo}`,
+        isDirectPackage: true
+      };
+    }
+  }
+
+  // Fallback check against raw.githubusercontent.com if branch or default 'main' is accessible
+  const fallbackBranch = branch || 'main';
+  const rawUrl = `https://raw.githubusercontent.com/${encodeURIComponent(
+    owner
+  )}/${encodeURIComponent(repo)}/${encodeURIComponent(fallbackBranch)}/${encodedPath}`;
+  const headRes = await fetch(rawUrl, { method: 'HEAD' });
+  if (headRes.ok) {
+    return {
+      installUrl: rawUrl,
+      xpiFile: xpiFilePath,
+      repo: `${owner}/${repo}`,
+      isDirectPackage: true
+    };
+  }
+
+  throw new Error(
+    `XPI file "${xpiFilePath}" was not found in repository ${owner}/${repo}.`
+  );
+}
+
 
 

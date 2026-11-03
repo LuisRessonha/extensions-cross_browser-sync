@@ -255,6 +255,26 @@ function renderDashboard() {
         }
       });
       actions.appendChild(autoInstallBtn);
+
+      const autoInstallFileBtn = document.createElement('button');
+      autoInstallFileBtn.className = 'btn btn-sm btn-secondary';
+      autoInstallFileBtn.textContent = 'Auto Install from File';
+      autoInstallFileBtn.title =
+        'Install from the xpi-files folder in the configured Git repository';
+      autoInstallFileBtn.addEventListener('click', async () => {
+        try {
+          autoInstallFileBtn.disabled = true;
+          await sendMessage({
+            type: 'AUTO_INSTALL_FROM_FILE',
+            item
+          });
+        } catch (err) {
+          showToast(err.message, true);
+        } finally {
+          autoInstallFileBtn.disabled = false;
+        }
+      });
+      actions.appendChild(autoInstallFileBtn);
     } else if (item.localId) {
       // Enable/Disable Switch
       const label = document.createElement('label');

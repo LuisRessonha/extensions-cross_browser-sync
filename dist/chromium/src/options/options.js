@@ -1,7 +1,7 @@
 import { ext } from '../shared/browser-polyfill.js';
 import { buildInitialPayloadFromLocal } from '../shared/sync-engine.js';
 import { normalizeSyncPayload } from '../shared/gist.js';
-import { buildCatalogEntry, formatCatalogEntrySnippet } from '../shared/matcher.js';
+import { buildCatalogEntry, formatCatalogEntrySnippet, parseGitRepoUrl } from '../shared/matcher.js';
 
 let currentState = null;
 let activeMatrixFilter = 'all';
@@ -27,6 +27,10 @@ const els = {
   gistId: document.getElementById('gist-id'),
   openGistLink: document.getElementById('open-gist-link'),
   deviceName: document.getElementById('device-name'),
+  gitRepoUrl: document.getElementById('git-repo-url'),
+  gitRepoToken: document.getElementById('git-repo-token'),
+  gitRepoBranch: document.getElementById('git-repo-branch'),
+  openRepoLink: document.getElementById('open-repo-link'),
   saveGistBtn: document.getElementById('save-gist-btn'),
   clearGistBtn: document.getElementById('clear-gist-btn'),
   autoSyncMinutes: document.getElementById('auto-sync-minutes'),
@@ -83,12 +87,26 @@ function updateGistLink(gistId) {
   }
 }
 
+function updateRepoLink(repoUrl) {
+  const parsed = parseGitRepoUrl(repoUrl || '');
+  if (parsed?.owner && parsed?.repo) {
+    els.openRepoLink.href = `https://github.com/${encodeURIComponent(parsed.owner)}/${encodeURIComponent(parsed.repo)}`;
+    els.openRepoLink.classList.remove('hidden');
+  } else {
+    els.openRepoLink.classList.add('hidden');
+  }
+}
+
 function populateSettingsForm(settings, browserEnv) {
   els.envBadge.textContent = `${browserEnv?.label || 'Browser'} (${browserEnv?.family || ''})`;
   els.githubToken.value = settings.githubToken || '';
   els.gistId.value = settings.gistId || '';
   els.deviceName.value = settings.deviceName || browserEnv?.label || '';
+  els.gitRepoUrl.value = settings.gitRepoUrl || '';
+  els.gitRepoToken.value = settings.gitRepoToken || '';
+  els.gitRepoBranch.value = settings.gitRepoBranch || '';
   updateGistLink(settings.gistId);
+  updateRepoLink(settings.gitRepoUrl);
 
   els.autoSyncMinutes.value = String(settings.autoSyncMinutes ?? 30);
   els.autoPushOnChange.checked = Boolean(settings.autoPushOnChange);
@@ -439,6 +457,29 @@ function renderMatrix() {
         }
       });
       actRow.appendChild(autoInstallBtn);
+
+      const autoInstallFileBtn = document.createElement('button');
+      autoInstallFileBtn.className = 'btn btn-sm btn-accent';
+      autoInstallFileBtn.textContent = 'Auto Install from File';
+      autoInstallFileBtn.title =
+        'Install from the xpi-files folder in the configured Git repository';
+      autoInstallFileBtn.addEventListener('click', async () => {
+        try {
+          autoInstallFileBtn.disabled = true;
+          const res = await sendMessage({
+            type: 'AUTO_INSTALL_FROM_FILE',
+            item
+          });
+          showAlert(
+            `Installing "${item.name}" from ${res.target?.repo}/${res.target?.xpiFile}...`
+          );
+        } catch (err) {
+          showAlert(err.message, true);
+        } finally {
+          autoInstallFileBtn.disabled = false;
+        }
+      });
+      actRow.appendChild(autoInstallFileBtn);
     }
 
     const catalogBtn = document.createElement('button');
@@ -634,12 +675,16 @@ els.saveGistBtn.addEventListener('click', async () => {
     const githubToken = els.githubToken.value.trim();
     const gistId = els.gistId.value.trim();
     const deviceName = els.deviceName.value.trim();
+    const gitRepoUrl = els.gitRepoUrl.value.trim();
+    const gitRepoToken = els.gitRepoToken.value.trim();
+    const gitRepoBranch = els.gitRepoBranch.value.trim();
 
     await sendMessage({
       type: 'SAVE_SETTINGS',
-      settings: { githubToken, gistId, deviceName }
+      settings: { githubToken, gistId, deviceName, gitRepoUrl, gitRepoToken, gitRepoBranch }
     });
     updateGistLink(gistId);
+    updateRepoLink(gitRepoUrl);
 
     const refreshed = await sendMessage({
       type: 'GET_DASHBOARD_STATE',

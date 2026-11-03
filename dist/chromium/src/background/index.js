@@ -8,7 +8,8 @@ import {
   normalizeExtensionName,
   resolveCanonicalKey,
   resolveDirectInstallTarget,
-  resolveFullCatalogEntry
+  resolveFullCatalogEntry,
+  resolveRepoXpiInstallTarget
 } from '../shared/matcher.js';
 import {
   getSettings,
@@ -48,6 +49,29 @@ async function triggerAutoInstallItem(item, active = true) {
     browserEnv.family,
     browserEnv.brand
   );
+
+  const tab = await ext.tabs.create({
+    url: target.installUrl,
+    active
+  });
+
+  if (item?.key) {
+    pendingAutoInstalls.set(item.key, {
+      key: item.key,
+      name: item.name,
+      ids: item.ids || {},
+      remoteEnabled: item.remoteEnabled !== false,
+      tabId: tab?.id || null,
+      createdAt: Date.now()
+    });
+  }
+
+  return target;
+}
+
+async function triggerAutoInstallFromFileItem(item, active = true) {
+  const settings = await getSettings();
+  const target = await resolveRepoXpiInstallTarget(item, settings);
 
   const tab = await ext.tabs.create({
     url: target.installUrl,
@@ -274,6 +298,12 @@ ext?.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
 
         case 'AUTO_INSTALL_EXTENSION': {
           const target = await triggerAutoInstallItem(message.item, true);
+          sendResponse({ ok: true, target });
+          break;
+        }
+
+        case 'AUTO_INSTALL_FROM_FILE': {
+          const target = await triggerAutoInstallFromFileItem(message.item, true);
           sendResponse({ ok: true, target });
           break;
         }

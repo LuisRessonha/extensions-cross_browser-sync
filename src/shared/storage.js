@@ -10,6 +10,9 @@ const STORAGE_KEYS = {
 export const DEFAULT_SETTINGS = {
   githubToken: '',
   gistId: '',
+  gitRepoUrl: '',
+  gitRepoToken: '',
+  gitRepoBranch: '',
   deviceName: '',
   autoSyncMinutes: 30, // 0 = disabled, otherwise minutes
   autoPushOnChange: false,
