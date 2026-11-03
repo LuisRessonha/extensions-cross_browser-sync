@@ -149,11 +149,11 @@
               />
             </div>
 
-            <hr style="border: 0; border-top: 1px solid var(--border); margin: 14px 0;" />
+            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 16px 0;" />
 
             <div class="form-group">
               <label for="git-repo-url">
-                Git Repository URL (for <code>xpi-files</code> installation)
+                <span>Git Repository URL (for <code>xpi-files</code> installation)</span>
                 <a id="open-repo-link" href="#" target="_blank" rel="noopener" class="gist-link hidden">View Repo ↗</a>
               </label>
               <input
@@ -165,17 +165,24 @@
             </div>
 
             <div class="form-group">
-              <label for="git-repo-token">Git Repo Access Token (Optional — uses Gist token or public access if blank)</label>
-              <input
-                type="password"
-                id="git-repo-token"
-                placeholder="ghp_... or github_pat_... (optional)"
-                autocomplete="off"
-              />
+              <label for="git-repo-token">
+                <span>Git Repo Access Token (Optional — uses Gist token or public access if blank)</span>
+              </label>
+              <div class="input-row">
+                <input
+                  type="password"
+                  id="git-repo-token"
+                  placeholder="ghp_... or github_pat_... (optional)"
+                  autocomplete="off"
+                />
+                <button type="button" id="toggle-repo-token-btn" class="btn btn-secondary btn-sm">Show</button>
+              </div>
             </div>
 
             <div class="form-group">
-              <label for="git-repo-branch">Git Branch (Optional — defaults to <code>main</code>)</label>
+              <label for="git-repo-branch">
+                <span>Git Branch (Optional — defaults to <code>main</code>)</span>
+              </label>
               <input
                 type="text"
                 id="git-repo-branch"

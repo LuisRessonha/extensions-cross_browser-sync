@@ -34,6 +34,7 @@ const els = {
   deviceName: document.getElementById('device-name'),
   gitRepoUrl: document.getElementById('git-repo-url'),
   gitRepoToken: document.getElementById('git-repo-token'),
+  toggleRepoTokenBtn: document.getElementById('toggle-repo-token-btn'),
   gitRepoBranch: document.getElementById('git-repo-branch'),
   openRepoLink: document.getElementById('open-repo-link'),
   saveGistBtn: document.getElementById('save-gist-btn'),
@@ -669,6 +670,12 @@ els.toggleTokenBtn.addEventListener('click', () => {
   const isPwd = els.githubToken.type === 'password';
   els.githubToken.type = isPwd ? 'text' : 'password';
   els.toggleTokenBtn.textContent = isPwd ? 'Hide' : 'Show';
+});
+
+els.toggleRepoTokenBtn.addEventListener('click', () => {
+  const isPwd = els.gitRepoToken.type === 'password';
+  els.gitRepoToken.type = isPwd ? 'text' : 'password';
+  els.toggleRepoTokenBtn.textContent = isPwd ? 'Hide' : 'Show';
 });
 
 els.discoverGistBtn.addEventListener('click', async () => {
