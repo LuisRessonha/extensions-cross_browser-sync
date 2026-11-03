@@ -1,7 +1,12 @@
 import { ext } from '../shared/browser-polyfill.js';
 import { buildInitialPayloadFromLocal } from '../shared/sync-engine.js';
 import { normalizeSyncPayload } from '../shared/gist.js';
-import { buildCatalogEntry, formatCatalogEntrySnippet, parseGitRepoUrl } from '../shared/matcher.js';
+import {
+  buildCatalogEntry,
+  formatCatalogEntrySnippet,
+  getStoreInstallInfo,
+  parseGitRepoUrl
+} from '../shared/matcher.js';
 
 let currentState = null;
 let activeMatrixFilter = 'all';
@@ -299,6 +304,8 @@ function renderMatrix() {
 
     const initialCr = item.ids?.chromium || '';
     const initialFf = item.ids?.firefox || '';
+    const crStore = getStoreInstallInfo(item, 'chromium', 'chrome');
+    const ffStore = getStoreInstallInfo(item, 'firefox', 'firefox');
 
     const crRow = document.createElement('div');
     crRow.className = 'id-edit-row';
@@ -315,6 +322,16 @@ function renderMatrix() {
       : 'Chromium ID not found automatically — enter 32-char ID or paste Chrome Web Store URL';
     crRow.appendChild(crLabel);
     crRow.appendChild(crInput);
+    if (crStore?.isDirect && crStore.url) {
+      const crStoreBtn = document.createElement('a');
+      crStoreBtn.href = crStore.url;
+      crStoreBtn.target = '_blank';
+      crStoreBtn.rel = 'noopener';
+      crStoreBtn.className = 'btn btn-secondary id-store-btn';
+      crStoreBtn.textContent = 'Store ↗';
+      crStoreBtn.title = `Open in ${crStore.storeName || 'Chrome Web Store'}`;
+      crRow.appendChild(crStoreBtn);
+    }
 
     const ffRow = document.createElement('div');
     ffRow.className = 'id-edit-row';
@@ -331,6 +348,16 @@ function renderMatrix() {
       : 'Firefox ID not found automatically — enter Add-on GUID/slug or paste Firefox Add-ons URL';
     ffRow.appendChild(ffLabel);
     ffRow.appendChild(ffInput);
+    if (ffStore?.isDirect && ffStore.url) {
+      const ffStoreBtn = document.createElement('a');
+      ffStoreBtn.href = ffStore.url;
+      ffStoreBtn.target = '_blank';
+      ffStoreBtn.rel = 'noopener';
+      ffStoreBtn.className = 'btn btn-secondary id-store-btn';
+      ffStoreBtn.textContent = 'Store ↗';
+      ffStoreBtn.title = `Open in ${ffStore.storeName || 'Firefox Add-ons'}`;
+      ffRow.appendChild(ffStoreBtn);
+    }
 
     const saveIdsBtn = document.createElement('button');
     saveIdsBtn.className = 'btn btn-secondary btn-sm hidden';
@@ -421,21 +448,10 @@ function renderMatrix() {
       tdLocal.appendChild(span);
     }
 
-    // Col 6: Actions (Store link + Ignore/Unignore)
+    // Col 6: Actions
     const tdActions = document.createElement('td');
     const actRow = document.createElement('div');
     actRow.className = 'button-row';
-
-    if (item.storeInfo?.url) {
-      const storeBtn = document.createElement('a');
-      storeBtn.href = item.storeInfo.url;
-      storeBtn.target = '_blank';
-      storeBtn.rel = 'noopener';
-      storeBtn.className = 'btn btn-sm btn-secondary';
-      storeBtn.textContent = 'Store ↗';
-      storeBtn.title = `Open store page in ${item.storeInfo.storeName}`;
-      actRow.appendChild(storeBtn);
-    }
 
     if (item.status === 'missing') {
       const dropdownWrap = document.createElement('div');
