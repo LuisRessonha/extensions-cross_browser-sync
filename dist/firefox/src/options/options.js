@@ -4,6 +4,7 @@ import { normalizeSyncPayload } from '../shared/gist.js';
 import { buildCatalogEntry, formatCatalogEntrySnippet } from '../shared/matcher.js';
 
 let currentState = null;
+let activeMatrixFilter = 'all';
 
 const els = {
   envBadge: document.getElementById('env-badge'),
@@ -39,7 +40,6 @@ const els = {
   syncLogList: document.getElementById('sync-log-list'),
   matrixStats: document.getElementById('matrix-stats'),
   matrixSearch: document.getElementById('matrix-search'),
-  matrixFilter: document.getElementById('matrix-filter'),
   matrixInstallMissingBtn: document.getElementById('matrix-install-missing-btn'),
   refreshRemoteBtn: document.getElementById('refresh-remote-btn'),
   matrixTbody: document.getElementById('matrix-tbody')
@@ -103,20 +103,53 @@ function renderMatrix() {
   const { counts, items } = comparison;
 
   els.matrixStats.replaceChildren();
+  const nonIgnoredItems = items.filter((i) => i.status !== 'ignored');
+  const installedLocalCount = nonIgnoredItems.filter((i) => Boolean(i.localId)).length;
+
   const statEntries = [
-    ['Installed', counts.totalLocal],
-    ['In Sync', counts.inSync],
-    ['State Diff', counts.stateDiff],
-    ['Missing', counts.missingInLocal],
-    ['Local Only', counts.localOnly],
-    ['Ignored', counts.ignored]
+    {
+      key: 'all',
+      label: 'All',
+      val: nonIgnoredItems.length,
+      desc: 'Show all non-ignored extensions (both locally installed and saved in Gist)'
+    },
+    {
+      key: 'installed',
+      label: 'Installed (Local)',
+      val: installedLocalCount,
+      desc: 'Show extensions currently installed in this browser (excluding ignored)'
+    },
+    {
+      key: 'state-diff',
+      label: 'Out of sync',
+      val: counts.stateDiff,
+      desc: 'Show extensions where the local enabled/disabled state differs from the Gist state'
+    },
+    {
+      key: 'missing',
+      label: 'Missing',
+      val: counts.missingInLocal,
+      desc: 'Show extensions saved in your Gist that are not installed in this browser yet'
+    },
+    {
+      key: 'ignored',
+      label: 'Ignored',
+      val: counts.ignored,
+      desc: 'Show extensions excluded from cross-browser synchronization'
+    }
   ];
-  for (const [label, val] of statEntries) {
-    const chip = document.createElement('div');
-    chip.className = 'stat-chip';
+  for (const { key, label, val, desc } of statEntries) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = `stat-chip${activeMatrixFilter === key ? ' active' : ''}`;
+    chip.title = desc;
     const strong = document.createElement('strong');
     strong.textContent = String(val);
     chip.append(`${label}: `, strong);
+    chip.addEventListener('click', () => {
+      activeMatrixFilter = key;
+      renderMatrix();
+    });
     els.matrixStats.appendChild(chip);
   }
 
@@ -129,11 +162,15 @@ function renderMatrix() {
   }
 
   const query = els.matrixSearch.value.trim().toLowerCase();
-  const statusFilter = els.matrixFilter.value;
 
   const filtered = items.filter((item) => {
-    if (statusFilter === 'all' && item.status === 'ignored') return false;
-    if (statusFilter !== 'all' && item.status !== statusFilter) return false;
+    if (activeMatrixFilter === 'all' && item.status === 'ignored') return false;
+    if (activeMatrixFilter === 'installed' && (!item.localId || item.status === 'ignored')) {
+      return false;
+    }
+    if (activeMatrixFilter === 'state-diff' && item.status !== 'state-diff') return false;
+    if (activeMatrixFilter === 'missing' && item.status !== 'missing') return false;
+    if (activeMatrixFilter === 'ignored' && item.status !== 'ignored') return false;
     if (query) {
       const hay = `${item.name} ${item.key} ${item.localId || ''} ${item.ids?.chromium || ''} ${
         item.ids?.firefox || ''
@@ -758,7 +795,6 @@ els.refreshRemoteBtn.addEventListener('click', async () => {
 });
 
 els.matrixSearch.addEventListener('input', () => renderMatrix());
-els.matrixFilter.addEventListener('change', () => renderMatrix());
 
 els.matrixInstallMissingBtn.addEventListener('click', async () => {
   if (!currentState) return;

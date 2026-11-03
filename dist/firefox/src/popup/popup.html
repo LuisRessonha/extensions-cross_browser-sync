@@ -61,16 +61,16 @@
 
     <!-- Filter Tabs -->
     <nav class="tabs" role="tablist">
-      <button class="tab active" data-tab="all">
+      <button class="tab active" data-tab="all" title="Show all non-ignored extensions (both local and in Gist)">
         All <span id="count-all" class="tab-count">0</span>
       </button>
-      <button class="tab" data-tab="missing">
+      <button class="tab" data-tab="missing" title="Show extensions saved in Gist that are not installed in this browser">
         Missing <span id="count-missing" class="tab-count badge-missing">0</span>
       </button>
-      <button class="tab" data-tab="diff">
+      <button class="tab" data-tab="diff" title="Show extensions whose local state differs from Gist or are local-only">
         Out of Sync <span id="count-diff" class="tab-count">0</span>
       </button>
-      <button class="tab" data-tab="installed">
+      <button class="tab" data-tab="installed" title="Show extensions currently installed in this browser">
         Installed <span id="count-installed" class="tab-count">0</span>
       </button>
     </nav>
