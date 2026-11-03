@@ -503,3 +503,62 @@ input:checked + .slider:before {
   line-height: 1.5;
 }
 
+/* Install Dropdown Menu */
+.install-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.install-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 185px;
+  background-color: var(--bg-secondary);
+  border: 1px solid #475569;
+  border-radius: var(--radius-md);
+  padding: 4px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.65);
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.install-dropdown-menu.drop-up {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+.install-dropdown-item {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11.5px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  transition: background-color 0.12s ease;
+}
+
+.install-dropdown-item:hover:not(:disabled) {
+  background-color: var(--bg-tertiary);
+}
+
+.install-dropdown-item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.install-dropdown-item span {
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+

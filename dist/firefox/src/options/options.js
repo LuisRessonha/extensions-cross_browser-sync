@@ -438,14 +438,32 @@ function renderMatrix() {
     }
 
     if (item.status === 'missing') {
-      const autoInstallBtn = document.createElement('button');
-      autoInstallBtn.className = 'btn btn-sm btn-primary';
-      autoInstallBtn.textContent = 'Auto Install';
-      autoInstallBtn.title =
-        'Install automatically (direct XPI on Firefox / managed auto-closing installer on Chromium)';
-      autoInstallBtn.addEventListener('click', async () => {
+      const dropdownWrap = document.createElement('div');
+      dropdownWrap.className = 'install-dropdown';
+
+      const installTriggerBtn = document.createElement('button');
+      installTriggerBtn.type = 'button';
+      installTriggerBtn.className = 'btn btn-sm btn-primary';
+      installTriggerBtn.textContent = 'Install ▾';
+      installTriggerBtn.title = 'Choose how to install this extension';
+
+      const menu = document.createElement('div');
+      menu.className = 'install-dropdown-menu hidden';
+
+      const autoInstallOpt = document.createElement('button');
+      autoInstallOpt.type = 'button';
+      autoInstallOpt.className = 'install-dropdown-item';
+      const autoTitle = document.createElement('strong');
+      autoTitle.textContent = 'Auto Install';
+      const autoSub = document.createElement('span');
+      autoSub.textContent = 'Install from Browser Store / AMO';
+      autoInstallOpt.append(autoTitle, autoSub);
+
+      autoInstallOpt.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        menu.classList.add('hidden');
         try {
-          autoInstallBtn.disabled = true;
+          installTriggerBtn.disabled = true;
           await sendMessage({
             type: 'AUTO_INSTALL_EXTENSION',
             item
@@ -453,19 +471,24 @@ function renderMatrix() {
         } catch (err) {
           showAlert(err.message, true);
         } finally {
-          autoInstallBtn.disabled = false;
+          installTriggerBtn.disabled = false;
         }
       });
-      actRow.appendChild(autoInstallBtn);
 
-      const autoInstallFileBtn = document.createElement('button');
-      autoInstallFileBtn.className = 'btn btn-sm btn-accent';
-      autoInstallFileBtn.textContent = 'Auto Install from File';
-      autoInstallFileBtn.title =
-        'Install from the xpi-files folder in the configured Git repository';
-      autoInstallFileBtn.addEventListener('click', async () => {
+      const fileInstallOpt = document.createElement('button');
+      fileInstallOpt.type = 'button';
+      fileInstallOpt.className = 'install-dropdown-item';
+      const fileTitle = document.createElement('strong');
+      fileTitle.textContent = 'Auto Install from File';
+      const fileSub = document.createElement('span');
+      fileSub.textContent = 'Install from Git repo xpi-files/';
+      fileInstallOpt.append(fileTitle, fileSub);
+
+      fileInstallOpt.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        menu.classList.add('hidden');
         try {
-          autoInstallFileBtn.disabled = true;
+          installTriggerBtn.disabled = true;
           const res = await sendMessage({
             type: 'AUTO_INSTALL_FROM_FILE',
             item
@@ -476,10 +499,30 @@ function renderMatrix() {
         } catch (err) {
           showAlert(err.message, true);
         } finally {
-          autoInstallFileBtn.disabled = false;
+          installTriggerBtn.disabled = false;
         }
       });
-      actRow.appendChild(autoInstallFileBtn);
+
+      installTriggerBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const wasHidden = menu.classList.contains('hidden');
+        for (const openMenu of document.querySelectorAll('.install-dropdown-menu')) {
+          openMenu.classList.add('hidden');
+        }
+        if (wasHidden) {
+          const rect = installTriggerBtn.getBoundingClientRect();
+          if (rect.bottom + 110 > window.innerHeight) {
+            menu.classList.add('drop-up');
+          } else {
+            menu.classList.remove('drop-up');
+          }
+          menu.classList.remove('hidden');
+        }
+      });
+
+      menu.append(autoInstallOpt, fileInstallOpt);
+      dropdownWrap.append(installTriggerBtn, menu);
+      actRow.appendChild(dropdownWrap);
     }
 
     const catalogBtn = document.createElement('button');
@@ -770,8 +813,17 @@ els.settingsModal.addEventListener('click', (e) => {
   }
 });
 
+document.addEventListener('click', () => {
+  for (const openMenu of document.querySelectorAll('.install-dropdown-menu')) {
+    openMenu.classList.add('hidden');
+  }
+});
+
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
+    for (const openMenu of document.querySelectorAll('.install-dropdown-menu')) {
+      openMenu.classList.add('hidden');
+    }
     if (!els.settingsModal.classList.contains('hidden')) {
       closeSettingsModal();
     }
