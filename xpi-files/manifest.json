@@ -12,7 +12,8 @@
       "sha256": "e2df503cce7cf5069130618c349695f62bdddb9eb8c189156d027269ae4ae267",
       "amoHash": "sha256:e2df503cce7cf5069130618c349695f62bdddb9eb8c189156d027269ae4ae267",
       "sizeBytes": 6343923,
-      "updatedAt": "2026-11-03T15:44:10.733Z"
+      "updatedAt": "2026-11-03T15:44:10.733Z",
+      "xpiFile": "xpi-files/ublock-origin.xpi"
     },
     "bitwarden": {
       "key": "bitwarden",
@@ -25,7 +26,8 @@
       "sha256": "abf9d7273dd55ac0583ecc6997f7f7ae3d29de11e2ad0a4838b80e2b941daa73",
       "amoHash": "sha256:abf9d7273dd55ac0583ecc6997f7f7ae3d29de11e2ad0a4838b80e2b941daa73",
       "sizeBytes": 23833411,
-      "updatedAt": "2026-11-03T15:44:12.016Z"
+      "updatedAt": "2026-11-03T15:44:12.016Z",
+      "xpiFile": "xpi-files/bitwarden.xpi"
     },
     "dark-reader": {
       "key": "dark-reader",
@@ -38,7 +40,8 @@
       "sha256": "700633395aa2f639a1bed4253e27309eb676f346d599b0ae2b7a0453232e0aec",
       "amoHash": "sha256:700633395aa2f639a1bed4253e27309eb676f346d599b0ae2b7a0453232e0aec",
       "sizeBytes": 874434,
-      "updatedAt": "2026-11-03T15:44:12.320Z"
+      "updatedAt": "2026-11-03T15:44:12.320Z",
+      "xpiFile": "xpi-files/dark-reader.xpi"
     },
     "1password": {
       "key": "1password",
@@ -51,7 +54,8 @@
       "sha256": "6b00acff73253865303af49e99329245a940348484cbd931ea39f9fa215134f5",
       "amoHash": "sha256:6b00acff73253865303af49e99329245a940348484cbd931ea39f9fa215134f5",
       "sizeBytes": 18152009,
-      "updatedAt": "2026-11-03T15:44:13.852Z"
+      "updatedAt": "2026-11-03T15:44:13.852Z",
+      "xpiFile": "xpi-files/1password.xpi"
     },
     "violentmonkey": {
       "key": "violentmonkey",
@@ -64,7 +68,8 @@
       "sha256": "5e074465c7fdd31934e5b4664e3d2eac54269df575a0c0db52c843fe9afd81df",
       "amoHash": "sha256:5e074465c7fdd31934e5b4664e3d2eac54269df575a0c0db52c843fe9afd81df",
       "sizeBytes": 733408,
-      "updatedAt": "2026-11-03T15:44:14.218Z"
+      "updatedAt": "2026-11-03T15:44:14.218Z",
+      "xpiFile": "xpi-files/violentmonkey.xpi"
     },
     "tampermonkey": {
       "key": "tampermonkey",
@@ -77,7 +82,8 @@
       "sha256": "190031c78dbc5696114835601f2c8e6b855ad1e134df5df278f8fc158c065908",
       "amoHash": "sha256:190031c78dbc5696114835601f2c8e6b855ad1e134df5df278f8fc158c065908",
       "sizeBytes": 1717973,
-      "updatedAt": "2026-11-03T15:44:14.669Z"
+      "updatedAt": "2026-11-03T15:44:14.669Z",
+      "xpiFile": "xpi-files/tampermonkey.xpi"
     },
     "stylus": {
       "key": "stylus",
@@ -90,7 +96,8 @@
       "sha256": "6ea20f86a2015e3e7a639e2dbb13bc0d63461fdfdb80d7138c3f8e8924e4fb1c",
       "amoHash": "sha256:6ea20f86a2015e3e7a639e2dbb13bc0d63461fdfdb80d7138c3f8e8924e4fb1c",
       "sizeBytes": 1268809,
-      "updatedAt": "2026-11-03T15:44:15.062Z"
+      "updatedAt": "2026-11-03T15:44:15.062Z",
+      "xpiFile": "xpi-files/stylus.xpi"
     },
     "react-developer-tools": {
       "key": "react-developer-tools",
@@ -103,7 +110,8 @@
       "sha256": "ad429f0b0db914a0505591f70160005d7c3e1a7865128c3bfa46392d28be34be",
       "amoHash": "sha256:ad429f0b0db914a0505591f70160005d7c3e1a7865128c3bfa46392d28be34be",
       "sizeBytes": 710180,
-      "updatedAt": "2026-11-03T15:44:15.389Z"
+      "updatedAt": "2026-11-03T15:44:15.389Z",
+      "xpiFile": "xpi-files/react-developer-tools.xpi"
     },
     "redux-devtools": {
       "key": "redux-devtools",
@@ -116,7 +124,8 @@
       "sha256": "0ea0b00c23ea302ea6145a29e8c28fd5c94145dfbeab18016744fe597da1045a",
       "amoHash": "sha256:0ea0b00c23ea302ea6145a29e8c28fd5c94145dfbeab18016744fe597da1045a",
       "sizeBytes": 1577075,
-      "updatedAt": "2026-11-03T15:44:15.839Z"
+      "updatedAt": "2026-11-03T15:44:15.839Z",
+      "xpiFile": "xpi-files/redux-devtools.xpi"
     },
     "vuejs-devtools": {
       "key": "vuejs-devtools",
@@ -129,7 +138,8 @@
       "sha256": "5672cd0d3298fa57f2f51e4644011e4152e6e291f6f338601495dd8037331169",
       "amoHash": "sha256:5672cd0d3298fa57f2f51e4644011e4152e6e291f6f338601495dd8037331169",
       "sizeBytes": 3790245,
-      "updatedAt": "2026-11-03T15:44:16.487Z"
+      "updatedAt": "2026-11-03T15:44:16.487Z",
+      "xpiFile": "xpi-files/vuejs-devtools.xpi"
     },
     "privacy-badger": {
       "key": "privacy-badger",
@@ -142,7 +152,8 @@
       "sha256": "97cd8911e3486da34a532a7c7f2806cd6d0cfa117a1fbe5e8747042a94442d62",
       "amoHash": "sha256:97cd8911e3486da34a532a7c7f2806cd6d0cfa117a1fbe5e8747042a94442d62",
       "sizeBytes": 3375425,
-      "updatedAt": "2026-11-03T15:44:16.998Z"
+      "updatedAt": "2026-11-03T15:44:16.998Z",
+      "xpiFile": "xpi-files/privacy-badger.xpi"
     },
     "ghostery": {
       "key": "ghostery",
@@ -155,7 +166,8 @@
       "sha256": "8583522c6513d4793bb5e66d6df94a8a151669a297ce9959821d6db13f0b9018",
       "amoHash": "sha256:8583522c6513d4793bb5e66d6df94a8a151669a297ce9959821d6db13f0b9018",
       "sizeBytes": 5013433,
-      "updatedAt": "2026-11-03T15:44:17.669Z"
+      "updatedAt": "2026-11-03T15:44:17.669Z",
+      "xpiFile": "xpi-files/ghostery.xpi"
     },
     "sponsorblock": {
       "key": "sponsorblock",
@@ -168,7 +180,8 @@
       "sha256": "0d50e1632c6f15ee15a543e670e1c572974605a5c02622916e08e026803df83f",
       "amoHash": "sha256:0d50e1632c6f15ee15a543e670e1c572974605a5c02622916e08e026803df83f",
       "sizeBytes": 1871121,
-      "updatedAt": "2026-11-03T15:44:18.057Z"
+      "updatedAt": "2026-11-03T15:44:18.057Z",
+      "xpiFile": "xpi-files/sponsorblock.xpi"
     },
     "return-youtube-dislike": {
       "key": "return-youtube-dislike",
@@ -181,7 +194,8 @@
       "sha256": "696ed411897a0c0cdf8beaa287394d97096f71d7e122121790cf936dd5e19493",
       "amoHash": "sha256:696ed411897a0c0cdf8beaa287394d97096f71d7e122121790cf936dd5e19493",
       "sizeBytes": 2418537,
-      "updatedAt": "2026-11-03T15:44:18.445Z"
+      "updatedAt": "2026-11-03T15:44:18.445Z",
+      "xpiFile": "xpi-files/return-youtube-dislike.xpi"
     },
     "clearurls": {
       "key": "clearurls",
@@ -194,7 +208,8 @@
       "sha256": "54926b6e4274d5935a5fc0daa6320f1d371e3d2f1a5877467ca3ab22a65c4f20",
       "amoHash": "sha256:54926b6e4274d5935a5fc0daa6320f1d371e3d2f1a5877467ca3ab22a65c4f20",
       "sizeBytes": 1099992,
-      "updatedAt": "2026-11-03T15:44:18.747Z"
+      "updatedAt": "2026-11-03T15:44:18.747Z",
+      "xpiFile": "xpi-files/clearurls.xpi"
     },
     "decentraleyes": {
       "key": "decentraleyes",
@@ -207,7 +222,8 @@
       "sha256": "e749d0d1985b579332b36aa00d43bd11c9e820b1375701657cf9aceedbb47581",
       "amoHash": "sha256:e749d0d1985b579332b36aa00d43bd11c9e820b1375701657cf9aceedbb47581",
       "sizeBytes": 7179276,
-      "updatedAt": "2026-11-03T15:44:19.438Z"
+      "updatedAt": "2026-11-03T15:44:19.438Z",
+      "xpiFile": "xpi-files/decentraleyes.xpi"
     },
     "consent-o-matic": {
       "key": "consent-o-matic",
@@ -220,7 +236,8 @@
       "sha256": "a2119abc329638d6e7af1ab4e5548a348465e02eec11de08dee0af84919923dc",
       "amoHash": "sha256:a2119abc329638d6e7af1ab4e5548a348465e02eec11de08dee0af84919923dc",
       "sizeBytes": 98619,
-      "updatedAt": "2026-11-03T15:44:19.737Z"
+      "updatedAt": "2026-11-03T15:44:19.737Z",
+      "xpiFile": "xpi-files/consent-o-matic.xpi"
     },
     "vimium": {
       "key": "vimium",
@@ -233,7 +250,8 @@
       "sha256": "131e2a67580e7ae9125ab19781159e61409fac47b441fc2782aab76396ead196",
       "amoHash": "sha256:131e2a67580e7ae9125ab19781159e61409fac47b441fc2782aab76396ead196",
       "sizeBytes": 200356,
-      "updatedAt": "2026-11-03T15:44:20.018Z"
+      "updatedAt": "2026-11-03T15:44:20.018Z",
+      "xpiFile": "xpi-files/vimium.xpi"
     },
     "singlefile": {
       "key": "singlefile",
@@ -246,7 +264,8 @@
       "sha256": "5d354af5044f57fbfdba4660dcd5de299d0813e41fd5b3c6cd0948dd6a6de2da",
       "amoHash": "sha256:5d354af5044f57fbfdba4660dcd5de299d0813e41fd5b3c6cd0948dd6a6de2da",
       "sizeBytes": 1648911,
-      "updatedAt": "2026-11-03T15:44:20.422Z"
+      "updatedAt": "2026-11-03T15:44:20.422Z",
+      "xpiFile": "xpi-files/singlefile.xpi"
     },
     "refined-github": {
       "key": "refined-github",
@@ -259,7 +278,8 @@
       "sha256": "12c2828bc4c31718f9a2595a007fa7b0300970b5b0d2eadd0aaf3754dbf7f1ff",
       "amoHash": "sha256:12c2828bc4c31718f9a2595a007fa7b0300970b5b0d2eadd0aaf3754dbf7f1ff",
       "sizeBytes": 735674,
-      "updatedAt": "2026-11-03T15:44:20.761Z"
+      "updatedAt": "2026-11-03T15:44:20.761Z",
+      "xpiFile": "xpi-files/refined-github.xpi"
     },
     "languagetool": {
       "key": "languagetool",
@@ -272,7 +292,8 @@
       "sha256": "54919c8f79989646e9ea4db5901eec7ce123170838b6db909cfd0e1e262854ae",
       "amoHash": "sha256:54919c8f79989646e9ea4db5901eec7ce123170838b6db909cfd0e1e262854ae",
       "sizeBytes": 15735157,
-      "updatedAt": "2026-11-03T15:44:21.906Z"
+      "updatedAt": "2026-11-03T15:44:21.906Z",
+      "xpiFile": "xpi-files/languagetool.xpi"
     },
     "proton-pass": {
       "key": "proton-pass",
@@ -285,7 +306,8 @@
       "sha256": "f67c5836e5eff3f82ac38e03a7b27d30b84dbb5246f74bb21b8b5bb15d3cd936",
       "amoHash": "sha256:f67c5836e5eff3f82ac38e03a7b27d30b84dbb5246f74bb21b8b5bb15d3cd936",
       "sizeBytes": 8452118,
-      "updatedAt": "2026-11-03T15:44:22.579Z"
+      "updatedAt": "2026-11-03T15:44:22.579Z",
+      "xpiFile": "xpi-files/proton-pass.xpi"
     },
     "raindrop-io": {
       "key": "raindrop-io",
@@ -298,7 +320,8 @@
       "sha256": "643aa5fff66f0c41e648003127f44253b6eadf997d2632fb76ad390d2eaed1e4",
       "amoHash": "sha256:643aa5fff66f0c41e648003127f44253b6eadf997d2632fb76ad390d2eaed1e4",
       "sizeBytes": 1146238,
-      "updatedAt": "2026-11-03T15:44:22.874Z"
+      "updatedAt": "2026-11-03T15:44:22.874Z",
+      "xpiFile": "xpi-files/raindrop-io.xpi"
     },
     "obsidian-web-clipper": {
       "key": "obsidian-web-clipper",
@@ -311,7 +334,8 @@
       "sha256": "e11043d5219bc690903996bf4577da2ef2f69691446fa31184d75b7050cbb1aa",
       "amoHash": "sha256:e11043d5219bc690903996bf4577da2ef2f69691446fa31184d75b7050cbb1aa",
       "sizeBytes": 4399929,
-      "updatedAt": "2026-11-03T15:44:23.348Z"
+      "updatedAt": "2026-11-03T15:44:23.348Z",
+      "xpiFile": "xpi-files/obsidian-web-clipper.xpi"
     },
     "reddit-enhancement-suite": {
       "key": "reddit-enhancement-suite",
@@ -324,7 +348,8 @@
       "sha256": "5c04ff0cd51b8dd40d9fb507c3d8eaaf353611db354bcba5abc6cf2dcd0e51d0",
       "amoHash": "sha256:5c04ff0cd51b8dd40d9fb507c3d8eaaf353611db354bcba5abc6cf2dcd0e51d0",
       "sizeBytes": 4701547,
-      "updatedAt": "2026-11-03T15:44:23.767Z"
+      "updatedAt": "2026-11-03T15:44:23.767Z",
+      "xpiFile": "xpi-files/reddit-enhancement-suite.xpi"
     },
     "enhancer-for-youtube": {
       "key": "enhancer-for-youtube",
@@ -337,7 +362,8 @@
       "sha256": "38a0420804d08224fc44e838aec432e947eb688b1300f423eeecbb44d33037fa",
       "amoHash": "sha256:38a0420804d08224fc44e838aec432e947eb688b1300f423eeecbb44d33037fa",
       "sizeBytes": 473731,
-      "updatedAt": "2026-11-03T15:44:24.073Z"
+      "updatedAt": "2026-11-03T15:44:24.073Z",
+      "xpiFile": "xpi-files/enhancer-for-youtube.xpi"
     },
     "wappalyzer": {
       "key": "wappalyzer",
@@ -350,7 +376,8 @@
       "sha256": "20bb60052190e00204970fc9d430e5c7756eab90a8e29f3006e79f2ed9f8efb8",
       "amoHash": "sha256:20bb60052190e00204970fc9d430e5c7756eab90a8e29f3006e79f2ed9f8efb8",
       "sizeBytes": 35581876,
-      "updatedAt": "2026-11-03T15:44:26.051Z"
+      "updatedAt": "2026-11-03T15:44:26.051Z",
+      "xpiFile": "xpi-files/wappalyzer.xpi"
     },
     "ublock-origin-lite": {
       "key": "ublock-origin-lite",
@@ -363,20 +390,8 @@
       "sha256": "b146e91f7221e25993388ddb0ed53772c24d5d2aa1c85215bdc1ca11c493d306",
       "amoHash": "sha256:b146e91f7221e25993388ddb0ed53772c24d5d2aa1c85215bdc1ca11c493d306",
       "sizeBytes": 8985898,
-      "updatedAt": "2026-11-03T16:11:37.168Z"
-    },
-    "don-t-track-me-google": {
-      "key": "don-t-track-me-google",
-      "name": "Don't track me Google",
-      "fileName": "don-t-track-me-google.xpi",
-      "version": "4.30",
-      "firefoxId": "dont-track-me-google@robwu.nl",
-      "firefoxSlug": "dont-track-me-google1",
-      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/4998037/dont_track_me_google1-4.30.xpi",
-      "sha256": "311a46a2f96a020cc2c5b1550cb2e41e0fb8308bdf6e72929a8e19be4a1371e9",
-      "amoHash": "sha256:311a46a2f96a020cc2c5b1550cb2e41e0fb8308bdf6e72929a8e19be4a1371e9",
-      "sizeBytes": 36759,
-      "updatedAt": "2026-11-03T16:11:37.395Z"
+      "updatedAt": "2026-11-03T16:11:37.168Z",
+      "xpiFile": "xpi-files/ublock-origin-lite.xpi"
     },
     "video-download-helper": {
       "key": "video-download-helper",
@@ -389,7 +404,8 @@
       "sha256": "abcddad43a3e5f9585078a52e95d938664a01cc1a1aeb32fad1d3bdfd6df56c2",
       "amoHash": "sha256:abcddad43a3e5f9585078a52e95d938664a01cc1a1aeb32fad1d3bdfd6df56c2",
       "sizeBytes": 3884443,
-      "updatedAt": "2026-11-03T16:11:37.696Z"
+      "updatedAt": "2026-11-03T16:11:37.696Z",
+      "xpiFile": "xpi-files/video-download-helper.xpi"
     },
     "adguard-adblocker": {
       "key": "adguard-adblocker",
@@ -402,7 +418,8 @@
       "sha256": "becd4d42749c57b5fbc22613ace4a93d0e47c2e646f8771a9e4f28c1c768cd89",
       "amoHash": "sha256:becd4d42749c57b5fbc22613ace4a93d0e47c2e646f8771a9e4f28c1c768cd89",
       "sizeBytes": 20664684,
-      "updatedAt": "2026-11-03T16:11:38.330Z"
+      "updatedAt": "2026-11-03T16:11:38.330Z",
+      "xpiFile": "xpi-files/adguard-adblocker.xpi"
     },
     "udemy": {
       "key": "udemy",
@@ -415,7 +432,8 @@
       "sha256": "b864fe1db41bd7bbaa50b9716fec3cfe5cf1e3e629cd86e9e8be2f7bd321a18b",
       "amoHash": "sha256:b864fe1db41bd7bbaa50b9716fec3cfe5cf1e3e629cd86e9e8be2f7bd321a18b",
       "sizeBytes": 25071,
-      "updatedAt": "2026-11-03T16:44:03.967Z"
+      "updatedAt": "2026-11-03T16:44:03.967Z",
+      "xpiFile": "xpi-files/udemy.xpi"
     },
     "i-still-don-t-care-about-cookies": {
       "key": "i-still-don-t-care-about-cookies",
@@ -428,7 +446,8 @@
       "sha256": "42922f61cfc53e2103e492ddbe5736caf503d9dad4a88690efc4c64dac10d5c7",
       "amoHash": "sha256:42922f61cfc53e2103e492ddbe5736caf503d9dad4a88690efc4c64dac10d5c7",
       "sizeBytes": 567285,
-      "updatedAt": "2026-11-03T16:44:04.214Z"
+      "updatedAt": "2026-11-03T16:44:04.214Z",
+      "xpiFile": "xpi-files/i-still-don-t-care-about-cookies.xpi"
     },
     "buster": {
       "key": "buster",
@@ -441,7 +460,8 @@
       "sha256": "4030ac4e6c6b6e1763654b159c7a0b921cbfb37e378204e4ad65ffea981d8b47",
       "amoHash": "sha256:4030ac4e6c6b6e1763654b159c7a0b921cbfb37e378204e4ad65ffea981d8b47",
       "sizeBytes": 6817227,
-      "updatedAt": "2026-11-03T16:44:04.585Z"
+      "updatedAt": "2026-11-03T16:44:04.585Z",
+      "xpiFile": "xpi-files/buster.xpi"
     }
   }
 }

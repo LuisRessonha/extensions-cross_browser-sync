@@ -23,14 +23,28 @@ function extractSlugFromAmoUrl(url) {
 }
 
 /**
- * Verifies a Chromium extension ID against the Chrome Web Store.
- * Must be a valid 32-char [a-p] ID and return HTTP 200 on the Chrome Web Store detail page.
+ * Extracts a 32-char Chromium extension ID from a raw ID or Chrome Web Store URL.
+ * @param {string} idOrUrl
+ * @returns {string}
+ */
+function extractChromiumId(idOrUrl) {
+  if (!idOrUrl || typeof idOrUrl !== 'string') return '';
+  const trimmed = idOrUrl.trim();
+  const urlMatch = trimmed.match(/\/detail\/(?:[^/"'\s?]+\/)?([a-p]{32})/i);
+  if (urlMatch?.[1]) return urlMatch[1].toLowerCase();
+  const lower = trimmed.toLowerCase();
+  return isChromiumExtensionId(lower) ? lower : '';
+}
+
+/**
+ * Verifies a Chromium extension ID or URL against the Chrome Web Store.
+ * Must resolve to a valid 32-char [a-p] ID and return HTTP 200 on the Chrome Web Store detail page.
  *
- * @param {string} chromiumId
+ * @param {string} chromiumIdOrUrl
  * @returns {Promise<{ valid: boolean, chromiumId: string, storeUrl: string }>}
  */
-async function verifyChromiumExtension(chromiumId) {
-  const cleanId = String(chromiumId || '').trim().toLowerCase();
+async function verifyChromiumExtension(chromiumIdOrUrl) {
+  const cleanId = extractChromiumId(chromiumIdOrUrl);
   if (!isChromiumExtensionId(cleanId)) {
     return { valid: false, chromiumId: cleanId, storeUrl: '' };
   }
@@ -178,7 +192,9 @@ async function main() {
   const newEntries = [];
 
   for (const candidate of candidates) {
-    let chromiumId = candidate.ids?.chromium || '';
+    let chromiumId =
+      extractChromiumId(candidate.ids?.chromium) ||
+      extractChromiumId(candidate.storeUrls?.chromium);
     let firefoxId = candidate.ids?.firefox || '';
     let firefoxSlug = extractSlugFromAmoUrl(candidate.storeUrls?.firefox) || '';
     let firefoxUrl = candidate.storeUrls?.firefox || '';
@@ -200,7 +216,7 @@ async function main() {
       }
     }
 
-    // 1. Validate Firefox ID / URL via AMO API
+    // Forced rule: BOTH Firefox and Chromium ID/URL must be valid
     const ffCheck = await verifyFirefoxExtension({
       firefoxId,
       firefoxSlug,
@@ -214,7 +230,6 @@ async function main() {
       continue;
     }
 
-    // 2. Validate Chromium ID / URL via Chrome Web Store
     const crCheck = await verifyChromiumExtension(chromiumId);
 
     if (!crCheck.valid) {
@@ -275,4 +290,3 @@ main().catch((err) => {
   console.error('Fatal error updating catalog:', err);
   process.exit(1);
 });
-

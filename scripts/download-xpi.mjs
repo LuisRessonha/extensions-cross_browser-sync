@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { KNOWN_EXTENSIONS_CATALOG } from '../src/shared/catalog.js';
+import { isChromiumExtensionId } from '../src/shared/matcher.js';
 
 const XPI_DIR = path.resolve(process.cwd(), 'xpi-files');
 const MANIFEST_PATH = path.join(XPI_DIR, 'manifest.json');
@@ -19,6 +20,20 @@ function extractSlugFromAmoUrl(url) {
 }
 
 /**
+ * Extracts a 32-char Chromium extension ID from a raw ID or Chrome Web Store URL.
+ * @param {string} idOrUrl
+ * @returns {string}
+ */
+function extractChromiumId(idOrUrl) {
+  if (!idOrUrl || typeof idOrUrl !== 'string') return '';
+  const trimmed = idOrUrl.trim();
+  const urlMatch = trimmed.match(/\/detail\/(?:[^/"'\s?]+\/)?([a-p]{32})/i);
+  if (urlMatch?.[1]) return urlMatch[1].toLowerCase();
+  const lower = trimmed.toLowerCase();
+  return isChromiumExtensionId(lower) ? lower : '';
+}
+
+/**
  * Sanitizes a key into a safe filename base for `<key>.xpi`.
  * @param {string} key
  * @returns {string}
@@ -28,62 +43,6 @@ function sanitizeFileName(key) {
     .toLowerCase()
     .replace(/[^a-z0-9._-]+/g, '-')
     .replace(/^-+|-+$/g, '');
-}
-
-/**
- * Loads optional synced extensions from a GitHub Gist if GIST_ID is configured in environment.
- */
-async function loadGistExtensions() {
-  const gistId = process.env.GIST_ID?.trim();
-  if (!gistId) return [];
-
-  const token = (process.env.GIST_TOKEN || '').trim();
-  const baseHeaders = {
-    Accept: 'application/vnd.github+json',
-    'X-GitHub-Api-Version': '2022-11-28',
-    'User-Agent': 'extensions-cross_browser-sync'
-  };
-
-  try {
-    console.log(`Fetching additional extensions from Gist: ${gistId}...`);
-    const gistUrl = `https://api.github.com/gists/${encodeURIComponent(gistId)}`;
-    let res;
-    if (token && !token.startsWith('ghs_')) {
-      res = await fetch(gistUrl, {
-        headers: {
-          ...baseHeaders,
-          Authorization: `Bearer ${token}`
-        }
-      });
-      if (res.status === 401 || res.status === 403) {
-        res = await fetch(gistUrl, { headers: baseHeaders });
-      }
-    } else {
-      res = await fetch(gistUrl, { headers: baseHeaders });
-    }
-
-    if (!res.ok) {
-      console.warn(`Could not fetch Gist ${gistId} (HTTP ${res.status}). Proceeding with catalog only.`);
-      return [];
-    }
-    const data = await res.json();
-    const fileObj =
-      data.files?.['extensions-cross_browser-sync.json'] || Object.values(data.files || {})[0];
-    if (!fileObj?.content) return [];
-
-    const parsed = JSON.parse(fileObj.content);
-    const exts = Object.values(parsed?.extensions || {});
-    return exts.map((rec) => ({
-      key: rec.key,
-      name: rec.name || rec.key,
-      firefoxId: rec.ids?.firefox || null,
-      firefoxSlug: extractSlugFromAmoUrl(rec.storeUrls?.firefox),
-      firefoxUrl: rec.storeUrls?.firefox || null
-    }));
-  } catch (err) {
-    console.warn(`Warning: Failed to load extensions from Gist: ${err.message}`);
-    return [];
-  }
 }
 
 /**
@@ -152,30 +111,25 @@ async function main() {
     }
   }
 
-  // Merge catalog entries + any Gist entries
-  const combinedMap = new Map();
-  for (const entry of KNOWN_EXTENSIONS_CATALOG) {
-    if (entry.firefoxId || entry.firefoxSlug || entry.firefoxUrl) {
-      combinedMap.set(entry.key, { ...entry });
+  // Forced rule: only include catalog entries that have BOTH a valid Chromium ID/URL and Firefox ID/URL
+  const items = KNOWN_EXTENSIONS_CATALOG.filter((entry) => {
+    const crId = extractChromiumId(entry.chromiumId || entry.chromiumUrl);
+    const hasFirefox = Boolean(entry.firefoxId || entry.firefoxSlug || entry.firefoxUrl);
+    if (!crId || !hasFirefox) {
+      console.warn(
+        `[SKIP] ${entry.key}: Missing valid Chromium or Firefox ID/URL (both are required).`
+      );
+      return false;
     }
-  }
+    return true;
+  });
 
-  const gistEntries = await loadGistExtensions();
-  for (const gEntry of gistEntries) {
-    if (!gEntry.firefoxId && !gEntry.firefoxSlug && !gEntry.firefoxUrl) continue;
-    const existing = combinedMap.get(gEntry.key) || {};
-    combinedMap.set(gEntry.key, {
-      ...existing,
-      key: gEntry.key,
-      name: existing.name || gEntry.name,
-      firefoxId: existing.firefoxId || gEntry.firefoxId,
-      firefoxSlug: existing.firefoxSlug || gEntry.firefoxSlug,
-      firefoxUrl: existing.firefoxUrl || gEntry.firefoxUrl
-    });
-  }
+  console.log(
+    `Found ${items.length} cross-browser extensions (with both Chromium and Firefox IDs/URLs) to check.`
+  );
 
-  const items = Array.from(combinedMap.values());
-  console.log(`Found ${items.length} Firefox extensions with valid ID or URL to check.`);
+  const validKeys = new Set();
+  const validFileNames = new Set(['manifest.json']);
 
   let downloadedCount = 0;
   let upToDateCount = 0;
@@ -186,6 +140,9 @@ async function main() {
     const relativeXpiPath = item.xpiFile || `xpi-files/${safeKey}.xpi`;
     const fileName = path.basename(relativeXpiPath);
     const filePath = path.resolve(process.cwd(), relativeXpiPath);
+
+    validKeys.add(item.key);
+    validFileNames.add(fileName);
 
     const amoInfo = await resolveAmoDownloadInfo(item);
     if (!amoInfo?.downloadUrl) {
@@ -205,6 +162,7 @@ async function main() {
       amoInfo.version !== 'latest' &&
       (!amoInfo.expectedHash || prevMeta.amoHash === amoInfo.expectedHash)
     ) {
+      prevMeta.xpiFile = `xpi-files/${fileName}`;
       console.log(`[OK]   ${item.key} (v${amoInfo.version}) is already up to date.`);
       upToDateCount++;
       continue;
@@ -232,7 +190,9 @@ async function main() {
         key: item.key,
         name: item.name || item.key,
         fileName,
+        xpiFile: `xpi-files/${fileName}`,
         version: amoInfo.version,
+        chromiumId: item.chromiumId || null,
         firefoxId: amoInfo.guid || item.firefoxId || null,
         firefoxSlug: amoInfo.slug || item.firefoxSlug || null,
         downloadUrl: amoInfo.downloadUrl,
@@ -249,6 +209,20 @@ async function main() {
     }
   }
 
+  // Prune any orphan XPI files or manifest entries that do not have both Chromium & Firefox IDs in KNOWN_EXTENSIONS_CATALOG
+  for (const key of Object.keys(existingManifest.extensions)) {
+    if (!validKeys.has(key)) {
+      delete existingManifest.extensions[key];
+    }
+  }
+
+  for (const existingFile of fs.readdirSync(XPI_DIR)) {
+    if (existingFile.endsWith('.xpi') && !validFileNames.has(existingFile)) {
+      fs.rmSync(path.join(XPI_DIR, existingFile), { force: true });
+      console.log(`[PRUNE] Removed ${existingFile} (not a valid cross-browser entry in catalog).`);
+    }
+  }
+
   existingManifest.updatedAt = new Date().toISOString();
   fs.writeFileSync(MANIFEST_PATH, JSON.stringify(existingManifest, null, 2) + '\n', 'utf8');
 
@@ -261,4 +235,3 @@ main().catch((err) => {
   console.error('Fatal error in download-xpi:', err);
   process.exit(1);
 });
-

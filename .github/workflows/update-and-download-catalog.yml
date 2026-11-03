@@ -1,10 +1,10 @@
-name: Download & Update Firefox XPI Files
+name: Update and Download EXTENSIONS_CATALOG
 
 on:
   workflow_dispatch:
     inputs:
       gist_id:
-        description: 'Optional GitHub Gist ID to also include synced Firefox extensions from'
+        description: 'GitHub Gist ID to scan for synced extensions with valid Chromium & Firefox IDs/URLs'
         required: false
         type: string
       force:
@@ -13,23 +13,15 @@ on:
         default: false
         type: boolean
   # schedule:
-  #   # Run weekly on Mondays at 04:00 UTC to keep XPI files updated
-  #   - cron: '0 4 * * 1'
-  # push:
-  #   branches:
-  #     - main
-  #     - master
-  #   paths:
-  #     - 'src/shared/catalog.js'
-  #     - 'scripts/download-xpi.mjs'
-  #     - '.github/workflows/update-xpi-files.yml'
+  #   # Run weekly on Mondays at 03:00 UTC
+  #   - cron: '0 3 * * 1'
 
 permissions:
   contents: write
 
 jobs:
-  update-xpi:
-    name: Download / Update Firefox XPIs
+  update-and-download-catalog:
+    name: Update and Download EXTENSIONS_CATALOG
     runs-on: ubuntu-latest
 
     steps:
@@ -41,10 +33,13 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Download and update Firefox XPI files
+      - name: 1. Update KNOWN_EXTENSIONS_CATALOG with gist content
         env:
           GIST_ID: ${{ inputs.gist_id || vars.GIST_ID }}
           GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+        run: node scripts/update-catalog.mjs
+
+      - name: 2. Download/update xpi files
         run: |
           if [ "${{ inputs.force }}" = "true" ]; then
             node scripts/download-xpi.mjs --force
@@ -52,15 +47,23 @@ jobs:
             node scripts/download-xpi.mjs
           fi
 
-      - name: Commit and push updated XPI files
+      - name: 3. Update xpi file path in KNOWN_EXTENSIONS_CATALOG
+        run: node scripts/update-catalog-xpi-paths.mjs
+
+      - name: Rebuild extension packages and run tests
+        run: |
+          npm run build
+          npm test
+
+      - name: Commit and push updated catalog and XPI files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add xpi-files/
+          git add src/shared/catalog.js xpi-files/ dist/
           if git diff --staged --quiet; then
-            echo "No changes in xpi-files/ to commit."
+            echo "No changes in KNOWN_EXTENSIONS_CATALOG or xpi-files/ to commit."
           else
-            git commit -m "chore(xpi): download/update Firefox extension XPI files"
+            git commit -m "chore(catalog): update KNOWN_EXTENSIONS_CATALOG and download XPI files"
             git push
           fi
 
