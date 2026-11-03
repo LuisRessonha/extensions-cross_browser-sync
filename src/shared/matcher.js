@@ -638,6 +638,15 @@ export function buildCatalogEntry(item, extra = {}) {
     extractFirefoxSlugFromUrl(item?.storeInfo?.url) ||
     '';
 
+  const safeKey = String(key || 'extension')
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  const xpiFile =
+    extra.xpiFile ||
+    catalog?.xpiFile ||
+    (safeKey ? `xpi-files/${safeKey}.xpi` : '');
+
   return {
     key,
     name,
@@ -645,7 +654,8 @@ export function buildCatalogEntry(item, extra = {}) {
     chromiumId,
     edgeId,
     firefoxId,
-    firefoxSlug
+    firefoxSlug,
+    xpiFile
   };
 }
 
@@ -669,7 +679,8 @@ export function formatCatalogEntrySnippet(entry) {
     lines.push(`    edgeId: '${esc(entry.edgeId)}',`);
   }
   lines.push(`    firefoxId: '${esc(entry.firefoxId)}',`);
-  lines.push(`    firefoxSlug: '${esc(entry.firefoxSlug)}'`);
+  lines.push(`    firefoxSlug: '${esc(entry.firefoxSlug)}',`);
+  lines.push(`    xpiFile: '${esc(entry.xpiFile || `xpi-files/${entry.key}.xpi`)}'`);
   lines.push('  }');
   return lines.join('\n');
 }

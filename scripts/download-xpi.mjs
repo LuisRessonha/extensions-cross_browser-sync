@@ -183,8 +183,9 @@ async function main() {
 
   for (const item of items) {
     const safeKey = sanitizeFileName(item.key);
-    const fileName = `${safeKey}.xpi`;
-    const filePath = path.join(XPI_DIR, fileName);
+    const relativeXpiPath = item.xpiFile || `xpi-files/${safeKey}.xpi`;
+    const fileName = path.basename(relativeXpiPath);
+    const filePath = path.resolve(process.cwd(), relativeXpiPath);
 
     const amoInfo = await resolveAmoDownloadInfo(item);
     if (!amoInfo?.downloadUrl) {
