@@ -1,0 +1,80 @@
+name: Update KNOWN_EXTENSIONS_CATALOG
+
+on:
+  workflow_dispatch:
+    inputs:
+      gist_id:
+        description: 'GitHub Gist ID to scan for extensions with valid Firefox & Chromium IDs/URLs'
+        required: false
+        type: string
+      key:
+        description: 'Single entry: Canonical key (optional, auto-derived from name if omitted)'
+        required: false
+        type: string
+      name:
+        description: 'Single entry: Extension display name'
+        required: false
+        type: string
+      chromium_id_or_url:
+        description: 'Single entry: Chromium 32-char ID or Chrome Web Store URL'
+        required: false
+        type: string
+      firefox_id_or_url:
+        description: 'Single entry: Firefox Add-on GUID, slug, or AMO URL'
+        required: false
+        type: string
+      edge_id:
+        description: 'Single entry: Optional Microsoft Edge Add-ons 32-char ID'
+        required: false
+        type: string
+  schedule:
+    # Run weekly on Mondays at 03:00 UTC (before the XPI download workflow at 04:00 UTC)
+    - cron: '0 3 * * 1'
+
+permissions:
+  contents: write
+
+jobs:
+  update-catalog:
+    name: Validate & Add Entries to KNOWN_EXTENSIONS_CATALOG
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate candidates and update KNOWN_EXTENSIONS_CATALOG
+        env:
+          GIST_ID: ${{ inputs.gist_id || vars.GIST_ID }}
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN || secrets.GITHUB_TOKEN }}
+          INPUT_KEY: ${{ inputs.key }}
+          INPUT_NAME: ${{ inputs.name }}
+          INPUT_CHROMIUM: ${{ inputs.chromium_id_or_url }}
+          INPUT_FIREFOX: ${{ inputs.firefox_id_or_url }}
+          INPUT_EDGE: ${{ inputs.edge_id }}
+        run: node scripts/update-catalog.mjs
+
+      - name: Rebuild extension packages and run tests if catalog changed
+        run: |
+          if ! git diff --quiet src/shared/catalog.js; then
+            npm run build
+            npm test
+          fi
+
+      - name: Commit and push updated catalog
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/shared/catalog.js dist/
+          if git diff --staged --quiet; then
+            echo "No new catalog entries to commit."
+          else
+            git commit -m "chore(catalog): add validated cross-browser extension entries"
+            git push
+          fi
+

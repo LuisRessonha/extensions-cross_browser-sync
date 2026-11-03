@@ -7,6 +7,7 @@
     "build": "node scripts/build.mjs",
     "icons": "node scripts/generate-icons.mjs",
     "download:xpi": "node scripts/download-xpi.mjs",
+    "update:catalog": "node scripts/update-catalog.mjs",
     "test": "node --test tests/*.test.mjs"
   },
   "keywords": [
