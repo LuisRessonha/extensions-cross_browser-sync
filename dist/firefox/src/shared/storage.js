@@ -151,3 +151,4 @@ export async function getSyncLogs() {
   const data = await ext.storage.local.get(STORAGE_KEYS.SYNC_LOG);
   return Array.isArray(data?.[STORAGE_KEYS.SYNC_LOG]) ? data[STORAGE_KEYS.SYNC_LOG] : [];
 }
+

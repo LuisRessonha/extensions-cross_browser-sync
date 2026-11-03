@@ -113,6 +113,7 @@ function renderMatrix() {
   const statusFilter = els.matrixFilter.value;
 
   const filtered = items.filter((item) => {
+    if (statusFilter === 'all' && item.status === 'ignored') return false;
     if (statusFilter !== 'all' && item.status !== statusFilter) return false;
     if (query) {
       const hay = `${item.name} ${item.key} ${item.localId || ''} ${item.ids?.chromium || ''} ${
@@ -571,3 +572,4 @@ els.importJsonInput.addEventListener('change', async (e) => {
     showAlert(err.message, true);
   }
 })();
+

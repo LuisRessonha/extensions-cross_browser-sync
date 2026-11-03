@@ -74,3 +74,4 @@ export async function uninstallExtension(id) {
   }
   await ext.management.uninstall(id, { showConfirmDialog: true });
 }
+

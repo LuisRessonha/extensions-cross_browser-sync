@@ -262,3 +262,4 @@ ext?.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
   // Return true to keep the message channel open for async response
   return true;
 });
+

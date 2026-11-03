@@ -90,6 +90,7 @@ function getStatusLabel(item) {
 
 function filterItems(items) {
   return items.filter((item) => {
+    if (item.status === 'ignored') return false;
     if (activeTab === 'missing' && item.status !== 'missing') return false;
     if (activeTab === 'diff' && item.status !== 'state-diff' && item.status !== 'local-only') {
       return false;
@@ -123,10 +124,13 @@ function renderDashboard() {
     els.setupBanner.classList.remove('hidden');
   }
 
-  els.countAll.textContent = String(items.length);
+  const nonIgnoredItems = items.filter((i) => i.status !== 'ignored');
+  els.countAll.textContent = String(nonIgnoredItems.length);
   els.countMissing.textContent = String(counts.missingInLocal);
   els.countDiff.textContent = String(counts.stateDiff + counts.localOnly);
-  els.countInstalled.textContent = String(counts.totalLocal);
+  els.countInstalled.textContent = String(
+    nonIgnoredItems.filter((i) => Boolean(i.localId)).length
+  );
 
   const missingItems = items.filter((i) => i.status === 'missing');
   if (missingItems.length > 0 && (activeTab === 'missing' || activeTab === 'all')) {
@@ -370,3 +374,4 @@ els.installAllMissingBtn.addEventListener('click', () => {
     showToast(err.message, true);
   }
 })();
+

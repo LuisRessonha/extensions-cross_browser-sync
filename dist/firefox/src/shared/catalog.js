@@ -211,3 +211,4 @@ export const KNOWN_EXTENSIONS_CATALOG = [
     firefoxSlug: 'wappalyzer'
   }
 ];
+

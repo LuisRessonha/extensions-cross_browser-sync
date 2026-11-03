@@ -327,3 +327,4 @@ export async function resolveFirefoxAddonFromAmo(record) {
     return null;
   }
 }
+

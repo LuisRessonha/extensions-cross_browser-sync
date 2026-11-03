@@ -245,3 +245,4 @@ export function normalizeSyncPayload(raw) {
     extensions: raw.extensions && typeof raw.extensions === 'object' ? raw.extensions : {}
   };
 }
+
