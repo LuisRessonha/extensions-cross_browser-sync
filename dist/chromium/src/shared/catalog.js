@@ -209,6 +209,49 @@ export const KNOWN_EXTENSIONS_CATALOG = [
     chromiumId: 'gppongmhjkpfnbhagpmjfkannfbllamg',
     firefoxId: 'wappalyzer@crunchlabz.com',
     firefoxSlug: 'wappalyzer'
+  },
+  {
+    key: 'ublock-origin-lite',
+    name: 'uBlock Origin Lite',
+    chromiumId: 'ddkjiahejlhfcafbddmgiahcphecmpfh',
+    firefoxId: 'uBOLiteRedux@raymondhill.net',
+    firefoxSlug: 'ublock-origin-lite'
+  },
+  {
+    key: 'udemy',
+    name: 'Udemy - Improved Course Library',
+    aliases: ['Udemy'],
+    chromiumId: 'dmlfcanjgejpgjajoiepgfglmjcnhhlh',
+    firefoxId: '{e8ca5e09-cd73-43aa-a313-4a75af598960}',
+    firefoxSlug: 'udemy-improved-course-library'
+  },
+  {
+    key: 'i-still-don-t-care-about-cookies',
+    name: 'I still don\'t care about cookies',
+    chromiumId: 'edibdbjcniadpccecjdfdjjppcpchdlm',
+    firefoxId: 'idcac-pub@guus.ninja',
+    firefoxSlug: 'istilldontcareaboutcookies'
+  },
+  {
+    key: 'buster',
+    name: 'Buster: Captcha Solver for Humans',
+    aliases: ['Buster'],
+    chromiumId: 'mpbjkejclgfgadiemmefgebjfooflfhl',
+    firefoxId: '{e58d3966-3d76-4cd9-8552-1582fbc800c1}',
+    firefoxSlug: 'buster-captcha-solver'
+  },
+  {
+    key: 'video-download-helper',
+    name: 'Video Download Helper',
+    chromiumId: 'lmjnegcaeklhafolokijcfjliaokphfk',
+    firefoxId: '{b9db16a4-6edc-47ec-a1f4-b86292ed211d}',
+    firefoxSlug: 'video-downloadhelper'
+  },
+  {
+    key: 'adguard-adblocker',
+    name: 'AdGuard AdBlocker',
+    chromiumId: 'bgnkhhnnamicmpeenaelnjfhikgbkllg',
+    firefoxId: 'adguardadblocker@adguard.com',
+    firefoxSlug: 'adguard-adblocker'
   }
 ];
-
