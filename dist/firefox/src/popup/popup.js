@@ -20,6 +20,7 @@ const els = {
   countMissing: document.getElementById('count-missing'),
   countDiff: document.getElementById('count-diff'),
   countInstalled: document.getElementById('count-installed'),
+  countIgnored: document.getElementById('count-ignored'),
   searchInput: document.getElementById('search-input'),
   installAllMissingBtn: document.getElementById('install-all-missing-btn'),
   extensionsList: document.getElementById('extensions-list'),
@@ -97,12 +98,13 @@ function getStatusLabel(item) {
 
 function filterItems(items) {
   return items.filter((item) => {
-    if (item.status === 'ignored') return false;
-    if (activeTab === 'missing' && item.status !== 'missing') return false;
-    if (activeTab === 'diff' && item.status !== 'state-diff' && item.status !== 'local-only') {
+    if (activeTab === 'all' && item.status === 'ignored') return false;
+    if (activeTab === 'installed' && (!item.localId || item.status === 'ignored')) {
       return false;
     }
-    if (activeTab === 'installed' && !item.localId) return false;
+    if (activeTab === 'state-diff' && item.status !== 'state-diff') return false;
+    if (activeTab === 'missing' && item.status !== 'missing') return false;
+    if (activeTab === 'ignored' && item.status !== 'ignored') return false;
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -133,11 +135,12 @@ function renderDashboard() {
 
   const nonIgnoredItems = items.filter((i) => i.status !== 'ignored');
   els.countAll.textContent = String(nonIgnoredItems.length);
-  els.countMissing.textContent = String(counts.missingInLocal);
-  els.countDiff.textContent = String(counts.stateDiff + counts.localOnly);
   els.countInstalled.textContent = String(
     nonIgnoredItems.filter((i) => Boolean(i.localId)).length
   );
+  els.countDiff.textContent = String(counts.stateDiff);
+  els.countMissing.textContent = String(counts.missingInLocal);
+  els.countIgnored.textContent = String(counts.ignored);
 
   const missingItems = items.filter((i) => i.status === 'missing');
   if (missingItems.length > 0 && (activeTab === 'missing' || activeTab === 'all')) {
@@ -156,8 +159,10 @@ function renderDashboard() {
     empty.textContent =
       activeTab === 'missing'
         ? 'All synced extensions are installed in this browser!'
-        : activeTab === 'diff'
+        : activeTab === 'state-diff'
         ? 'Everything is in sync between this browser and your Gist!'
+        : activeTab === 'ignored'
+        ? 'No ignored extensions.'
         : 'No matching extensions found.';
     els.extensionsList.appendChild(empty);
     return;
