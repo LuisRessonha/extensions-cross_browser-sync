@@ -9,6 +9,9 @@ const els = {
   headerSyncBtn: document.getElementById('header-sync-btn'),
   headerPushBtn: document.getElementById('header-push-btn'),
   headerPullBtn: document.getElementById('header-pull-btn'),
+  openSettingsModalBtn: document.getElementById('open-settings-modal-btn'),
+  closeSettingsModalBtn: document.getElementById('close-settings-modal-btn'),
+  settingsModal: document.getElementById('settings-modal'),
   alertBanner: document.getElementById('alert-banner'),
   githubToken: document.getElementById('github-token'),
   toggleTokenBtn: document.getElementById('toggle-token-btn'),
@@ -535,6 +538,29 @@ els.savePrefsBtn.addEventListener('click', async () => {
 els.headerSyncBtn.addEventListener('click', () => runSync('merge'));
 els.headerPushBtn.addEventListener('click', () => runSync('push'));
 els.headerPullBtn.addEventListener('click', () => runSync('pull'));
+
+function openSettingsModal() {
+  els.settingsModal.classList.remove('hidden');
+}
+
+function closeSettingsModal() {
+  els.settingsModal.classList.add('hidden');
+}
+
+els.openSettingsModalBtn.addEventListener('click', openSettingsModal);
+els.closeSettingsModalBtn.addEventListener('click', closeSettingsModal);
+
+els.settingsModal.addEventListener('click', (e) => {
+  if (e.target === els.settingsModal) {
+    closeSettingsModal();
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !els.settingsModal.classList.contains('hidden')) {
+    closeSettingsModal();
+  }
+});
 
 els.refreshRemoteBtn.addEventListener('click', async () => {
   try {

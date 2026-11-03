@@ -24,140 +24,20 @@
         <button id="header-sync-btn" class="btn btn-primary">Sync Now (Merge)</button>
         <button id="header-push-btn" class="btn btn-secondary">Push ↑</button>
         <button id="header-pull-btn" class="btn btn-secondary">Pull ↓</button>
+        <button id="open-settings-modal-btn" class="btn btn-secondary" title="Open Sync &amp; Gist Settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span>Settings</span>
+        </button>
       </div>
     </header>
 
     <div id="alert-banner" class="alert-banner hidden"></div>
 
-    <main class="main-grid">
-      <!-- Left Column: Settings & Gist Configuration -->
-      <div class="col-settings">
-        <!-- Card 1: GitHub Gist Connection -->
-        <section class="card">
-          <h2>1. GitHub Gist Backend</h2>
-          <p class="card-desc">
-            Store your extension list in a private GitHub Gist. Create a
-            <a href="https://github.com/settings/tokens/new?scopes=gist&description=extensions-cross_browser-sync" target="_blank" rel="noopener">GitHub Personal Access Token</a>
-            with the <code>gist</code> scope.
-          </p>
-
-          <div class="form-group">
-            <label for="github-token">GitHub Personal Access Token</label>
-            <div class="input-row">
-              <input
-                type="password"
-                id="github-token"
-                placeholder="ghp_... or github_pat_..."
-                autocomplete="off"
-              />
-              <button type="button" id="toggle-token-btn" class="btn btn-secondary btn-sm">Show</button>
-            </div>
-          </div>
-
-          <div class="button-row">
-            <button type="button" id="discover-gist-btn" class="btn btn-secondary btn-sm">
-              Verify &amp; Auto-Discover Gist
-            </button>
-            <button type="button" id="create-gist-btn" class="btn btn-accent btn-sm">
-              + Create New Private Gist
-            </button>
-          </div>
-
-          <div class="form-group" style="margin-top: 12px;">
-            <label for="gist-id">
-              Gist ID
-              <a id="open-gist-link" href="#" target="_blank" rel="noopener" class="gist-link hidden">View on GitHub ↗</a>
-            </label>
-            <input
-              type="text"
-              id="gist-id"
-              placeholder="e.g. a1b2c3d4e5f6g7h8i9j0..."
-              autocomplete="off"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="device-name">Browser / Device Label</label>
-            <input
-              type="text"
-              id="device-name"
-              placeholder="e.g. Chrome on Work PC"
-              autocomplete="off"
-            />
-          </div>
-
-          <button type="button" id="save-gist-btn" class="btn btn-primary full-width">
-            Save Connection Settings
-          </button>
-          <button type="button" id="clear-gist-btn" class="btn btn-danger full-width" style="margin-top: 8px;">
-            Clear Saved Gist Data
-          </button>
-        </section>
-
-        <!-- Card 2: Sync Behavior & Automation -->
-        <section class="card">
-          <h2>2. Sync Behavior &amp; Automation</h2>
-
-          <div class="form-group">
-            <label for="auto-sync-minutes">Periodic Background Sync</label>
-            <select id="auto-sync-minutes">
-              <option value="0">Disabled (Manual sync only)</option>
-              <option value="5">Every 5 minutes</option>
-              <option value="15">Every 15 minutes</option>
-              <option value="30">Every 30 minutes (Recommended)</option>
-              <option value="60">Every 60 minutes</option>
-            </select>
-          </div>
-
-          <label class="checkbox-row">
-            <input type="checkbox" id="auto-push-on-change" />
-            <span>Auto-push to Gist when I enable/disable or install an extension</span>
-          </label>
-
-          <label class="checkbox-row">
-            <input type="checkbox" id="auto-apply-enabled" />
-            <span>Automatically enable/disable local extensions when syncing</span>
-          </label>
-
-          <label class="checkbox-row">
-            <input type="checkbox" id="sync-disabled-extensions" />
-            <span>Include disabled extensions in sync payload</span>
-          </label>
-
-          <label class="checkbox-row">
-            <input type="checkbox" id="include-dev-extensions" />
-            <span>Include unpacked / development extensions</span>
-          </label>
-
-          <button type="button" id="save-prefs-btn" class="btn btn-secondary full-width" style="margin-top: 10px;">
-            Save Preferences
-          </button>
-        </section>
-
-        <!-- Card 3: Backup & Restore + Activity Log -->
-        <section class="card">
-          <h2>3. Local JSON Backup &amp; Activity Log</h2>
-          <p class="card-desc">
-            Export your cross-browser sync profile to a JSON file or import a snapshot manually.
-          </p>
-          <div class="button-row">
-            <button type="button" id="export-json-btn" class="btn btn-secondary btn-sm">
-              Export JSON ↓
-            </button>
-            <label class="btn btn-secondary btn-sm file-btn">
-              Import JSON ↑
-              <input type="file" id="import-json-input" accept=".json,application/json" hidden />
-            </label>
-          </div>
-
-          <h3 class="log-heading">Recent Sync Activity</h3>
-          <div id="sync-log-list" class="sync-log-list">
-            <div class="muted">No sync events recorded yet.</div>
-          </div>
-        </section>
-      </div>
-
-      <!-- Right Column: Cross-Browser Extensions Matrix -->
+    <main class="main-content">
+      <!-- Full-Width Cross-Browser Extensions Matrix -->
       <div class="col-matrix">
         <section class="card matrix-card">
           <div class="matrix-header">
@@ -211,6 +91,141 @@
         </section>
       </div>
     </main>
+
+    <!-- Settings Popup Modal -->
+    <div id="settings-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h2 id="settings-modal-title">Sync &amp; Gist Settings</h2>
+          <button type="button" id="close-settings-modal-btn" class="modal-close-btn" aria-label="Close settings">✕</button>
+        </div>
+        <div class="modal-body">
+          <!-- Card 1: GitHub Gist Connection -->
+          <section class="card">
+            <h2>1. GitHub Gist Backend</h2>
+            <p class="card-desc">
+              Store your extension list in a private GitHub Gist. Create a
+              <a href="https://github.com/settings/tokens/new?scopes=gist&description=extensions-cross_browser-sync" target="_blank" rel="noopener">GitHub Personal Access Token</a>
+              with the <code>gist</code> scope.
+            </p>
+
+            <div class="form-group">
+              <label for="github-token">GitHub Personal Access Token</label>
+              <div class="input-row">
+                <input
+                  type="password"
+                  id="github-token"
+                  placeholder="ghp_... or github_pat_..."
+                  autocomplete="off"
+                />
+                <button type="button" id="toggle-token-btn" class="btn btn-secondary btn-sm">Show</button>
+              </div>
+            </div>
+
+            <div class="button-row">
+              <button type="button" id="discover-gist-btn" class="btn btn-secondary btn-sm">
+                Verify &amp; Auto-Discover Gist
+              </button>
+              <button type="button" id="create-gist-btn" class="btn btn-accent btn-sm">
+                + Create New Private Gist
+              </button>
+            </div>
+
+            <div class="form-group" style="margin-top: 12px;">
+              <label for="gist-id">
+                Gist ID
+                <a id="open-gist-link" href="#" target="_blank" rel="noopener" class="gist-link hidden">View on GitHub ↗</a>
+              </label>
+              <input
+                type="text"
+                id="gist-id"
+                placeholder="e.g. a1b2c3d4e5f6g7h8i9j0..."
+                autocomplete="off"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="device-name">Browser / Device Label</label>
+              <input
+                type="text"
+                id="device-name"
+                placeholder="e.g. Chrome on Work PC"
+                autocomplete="off"
+              />
+            </div>
+
+            <button type="button" id="save-gist-btn" class="btn btn-primary full-width">
+              Save Connection Settings
+            </button>
+            <button type="button" id="clear-gist-btn" class="btn btn-danger full-width" style="margin-top: 8px;">
+              Clear Saved Gist Data
+            </button>
+          </section>
+
+          <!-- Card 2: Sync Behavior & Automation -->
+          <section class="card">
+            <h2>2. Sync Behavior &amp; Automation</h2>
+
+            <div class="form-group">
+              <label for="auto-sync-minutes">Periodic Background Sync</label>
+              <select id="auto-sync-minutes">
+                <option value="0">Disabled (Manual sync only)</option>
+                <option value="5">Every 5 minutes</option>
+                <option value="15">Every 15 minutes</option>
+                <option value="30">Every 30 minutes (Recommended)</option>
+                <option value="60">Every 60 minutes</option>
+              </select>
+            </div>
+
+            <label class="checkbox-row">
+              <input type="checkbox" id="auto-push-on-change" />
+              <span>Auto-push to Gist when I enable/disable or install an extension</span>
+            </label>
+
+            <label class="checkbox-row">
+              <input type="checkbox" id="auto-apply-enabled" />
+              <span>Automatically enable/disable local extensions when syncing</span>
+            </label>
+
+            <label class="checkbox-row">
+              <input type="checkbox" id="sync-disabled-extensions" />
+              <span>Include disabled extensions in sync payload</span>
+            </label>
+
+            <label class="checkbox-row">
+              <input type="checkbox" id="include-dev-extensions" />
+              <span>Include unpacked / development extensions</span>
+            </label>
+
+            <button type="button" id="save-prefs-btn" class="btn btn-secondary full-width" style="margin-top: 10px;">
+              Save Preferences
+            </button>
+          </section>
+
+          <!-- Card 3: Backup & Restore + Activity Log -->
+          <section class="card">
+            <h2>3. Local JSON Backup &amp; Activity Log</h2>
+            <p class="card-desc">
+              Export your cross-browser sync profile to a JSON file or import a snapshot manually.
+            </p>
+            <div class="button-row">
+              <button type="button" id="export-json-btn" class="btn btn-secondary btn-sm">
+                Export JSON ↓
+              </button>
+              <label class="btn btn-secondary btn-sm file-btn">
+                Import JSON ↑
+                <input type="file" id="import-json-input" accept=".json,application/json" hidden />
+              </label>
+            </div>
+
+            <h3 class="log-heading">Recent Sync Activity</h3>
+            <div id="sync-log-list" class="sync-log-list">
+              <div class="muted">No sync events recorded yet.</div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="options.js"></script>
