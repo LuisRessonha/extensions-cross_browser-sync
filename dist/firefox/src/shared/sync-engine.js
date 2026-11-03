@@ -678,3 +678,67 @@ export async function buildInitialPayloadFromLocal() {
   return plan.nextPayload;
 }
 
+/**
+ * Clears all saved extension data from the remote GitHub Gist and resets the local remote cache.
+ *
+ * @param {{ token?: string, gistId?: string }} [overrides]
+ */
+export async function clearGistData(overrides = {}) {
+  const settings = await getSettings();
+  const browserEnv = detectBrowserEnvironment();
+  const token = (overrides.token || settings.githubToken || '').trim();
+  const gistId = (overrides.gistId || settings.gistId || '').trim();
+
+  if (!token || !gistId) {
+    throw new Error(
+      'GitHub Token and Gist ID are required to clear Gist data.'
+    );
+  }
+
+  const emptyPayload = {
+    ...createEmptySyncPayload(),
+    updatedAt: new Date().toISOString(),
+    updatedBy: {
+      deviceId: settings.deviceId,
+      deviceName: settings.deviceName || browserEnv.label,
+      browser: browserEnv.brand,
+      family: browserEnv.family
+    },
+    extensions: {}
+  };
+
+  try {
+    await updateSyncGist(token, gistId, emptyPayload);
+    await saveRemoteCache(emptyPayload);
+    await saveLocalMeta({
+      updatedAtByKey: {},
+      lastSyncAt: new Date().toISOString(),
+      lastSyncStatus: 'success',
+      lastSyncError: null,
+      lastSyncSummary: {
+        mode: 'clear',
+        totalSynced: 0,
+        toggledLocally: 0,
+        missingCount: 0,
+        remoteUpdated: true
+      }
+    });
+    await appendSyncLog({
+      status: 'success',
+      mode: 'clear',
+      message: 'Cleared all saved extension data from GitHub Gist.'
+    });
+
+    return { ok: true, payload: emptyPayload };
+  } catch (error) {
+    const errMsg = error?.message || String(error);
+    await appendSyncLog({
+      status: 'error',
+      mode: 'clear',
+      message: `Failed to clear Gist: ${errMsg}`
+    });
+    throw error;
+  }
+}
+
+

@@ -285,6 +285,16 @@ select:focus {
   background-color: rgba(16, 185, 129, 0.28);
 }
 
+.btn-danger {
+  background-color: rgba(239, 68, 68, 0.16);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: rgba(239, 68, 68, 0.28);
+}
+
 .file-btn {
   cursor: pointer;
 }

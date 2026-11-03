@@ -14,6 +14,7 @@ const els = {
   syncMergeBtn: document.getElementById('sync-merge-btn'),
   syncPushBtn: document.getElementById('sync-push-btn'),
   syncPullBtn: document.getElementById('sync-pull-btn'),
+  syncClearBtn: document.getElementById('sync-clear-btn'),
   countAll: document.getElementById('count-all'),
   countMissing: document.getElementById('count-missing'),
   countDiff: document.getElementById('count-diff'),
@@ -339,6 +340,25 @@ els.setupGistBtn.addEventListener('click', () => {
 els.syncMergeBtn.addEventListener('click', () => runSync('merge'));
 els.syncPushBtn.addEventListener('click', () => runSync('push'));
 els.syncPullBtn.addEventListener('click', () => runSync('pull'));
+
+els.syncClearBtn.addEventListener('click', async () => {
+  const confirmed = window.confirm(
+    'Clear all saved extension data from your GitHub Gist?'
+  );
+  if (!confirmed) return;
+
+  try {
+    els.syncClearBtn.disabled = true;
+    const res = await sendMessage({ type: 'CLEAR_GIST_DATA' });
+    currentState = res.data;
+    renderDashboard();
+    showToast('Cleared all saved extension data from GitHub Gist.');
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    els.syncClearBtn.disabled = false;
+  }
+});
 
 for (const tabBtn of els.tabs) {
   tabBtn.addEventListener('click', () => {

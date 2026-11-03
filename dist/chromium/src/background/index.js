@@ -17,6 +17,7 @@ import {
 } from '../shared/gist.js';
 import {
   buildInitialPayloadFromLocal,
+  clearGistData,
   getDashboardState,
   isCurrentlyApplyingRemoteState,
   performSync
@@ -231,6 +232,17 @@ ext?.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
           await configureSyncAlarm();
           await refreshBadge();
           sendResponse({ ok: true, created });
+          break;
+        }
+
+        case 'CLEAR_GIST_DATA': {
+          await clearGistData({
+            token: message.token,
+            gistId: message.gistId
+          });
+          const state = await getDashboardState({ refreshRemote: false });
+          await refreshBadge();
+          sendResponse({ ok: true, data: state });
           break;
         }
 

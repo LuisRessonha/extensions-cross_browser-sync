@@ -18,6 +18,7 @@ const els = {
   openGistLink: document.getElementById('open-gist-link'),
   deviceName: document.getElementById('device-name'),
   saveGistBtn: document.getElementById('save-gist-btn'),
+  clearGistBtn: document.getElementById('clear-gist-btn'),
   autoSyncMinutes: document.getElementById('auto-sync-minutes'),
   autoPushOnChange: document.getElementById('auto-push-on-change'),
   autoApplyEnabled: document.getElementById('auto-apply-enabled'),
@@ -477,6 +478,37 @@ els.saveGistBtn.addEventListener('click', async () => {
     showAlert('Connection settings saved!');
   } catch (err) {
     showAlert(err.message, true);
+  }
+});
+
+els.clearGistBtn.addEventListener('click', async () => {
+  const token = els.githubToken.value.trim();
+  const gistId = els.gistId.value.trim();
+  if (!token || !gistId) {
+    showAlert('GitHub Token and Gist ID are required to clear Gist data.', true);
+    return;
+  }
+  const confirmed = window.confirm(
+    'Are you sure you want to clear all saved extension data from your GitHub Gist? This will empty the remote sync list.'
+  );
+  if (!confirmed) return;
+
+  try {
+    els.clearGistBtn.disabled = true;
+    const res = await sendMessage({
+      type: 'CLEAR_GIST_DATA',
+      token,
+      gistId
+    });
+    currentState = res.data;
+    renderMatrix();
+    await refreshSyncLogs();
+    showAlert('Cleared all saved extension data from your GitHub Gist.');
+  } catch (err) {
+    showAlert(err.message, true);
+    await refreshSyncLogs();
+  } finally {
+    els.clearGistBtn.disabled = false;
   }
 });
 
