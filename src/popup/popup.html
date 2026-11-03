@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>extensions-cross_browser-sync</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Header -->
+    <header class="header">
+      <div class="brand">
+        <img src="../../assets/icon-32.png" alt="Logo" class="brand-icon" />
+        <div class="brand-text">
+          <h1>Cross-Browser Sync</h1>
+          <div class="meta-row">
+            <span id="browser-badge" class="badge badge-browser">Browser</span>
+            <span id="last-sync-label" class="sync-time">Never synced</span>
+          </div>
+        </div>
+      </div>
+      <button id="open-options-btn" class="icon-btn" title="Open Settings & Dashboard" aria-label="Settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Unconfigured Gist Banner -->
+    <div id="setup-banner" class="setup-banner hidden">
+      <div class="setup-banner-text">
+        <strong>Connect GitHub Gist</strong>
+        <span>Set up your token &amp; Gist to sync across browsers.</span>
+      </div>
+      <button id="setup-gist-btn" class="btn btn-sm btn-primary">Configure</button>
+    </div>
+
+    <!-- Status / Alert Toast -->
+    <div id="status-toast" class="status-toast hidden"></div>
+
+    <!-- Sync Actions Bar -->
+    <section class="sync-controls">
+      <button id="sync-merge-btn" class="btn btn-primary btn-sync-main" title="Bidirectional Smart Sync (Merge latest changes)">
+        <svg class="spin-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+        </svg>
+        <span>Sync Now</span>
+      </button>
+      <button id="sync-push-btn" class="btn btn-secondary" title="Push local extensions & state to Gist">
+        Push ↑
+      </button>
+      <button id="sync-pull-btn" class="btn btn-secondary" title="Pull Gist state & apply enabled/disabled state locally">
+        Pull ↓
+      </button>
+    </section>
+
+    <!-- Filter Tabs -->
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="all">
+        All <span id="count-all" class="tab-count">0</span>
+      </button>
+      <button class="tab" data-tab="missing">
+        Missing <span id="count-missing" class="tab-count badge-missing">0</span>
+      </button>
+      <button class="tab" data-tab="diff">
+        Out of Sync <span id="count-diff" class="tab-count">0</span>
+      </button>
+      <button class="tab" data-tab="installed">
+        Installed <span id="count-installed" class="tab-count">0</span>
+      </button>
+    </nav>
+
+    <!-- Search & Batch Action Bar -->
+    <div class="toolbar">
+      <input
+        type="search"
+        id="search-input"
+        class="search-input"
+        placeholder="Filter extensions by name..."
+        autocomplete="off"
+      />
+      <button id="install-all-missing-btn" class="btn btn-sm btn-accent hidden" title="Open store pages for all missing extensions">
+        Install All Missing ↗
+      </button>
+    </div>
+
+    <!-- Extensions List -->
+    <main id="extensions-list" class="extensions-list">
+      <div class="empty-state">Loading extensions...</div>
+    </main>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
+

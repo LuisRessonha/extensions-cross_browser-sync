@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>extensions-cross_browser-sync — Dashboard &amp; Settings</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <div class="layout">
+    <!-- Top Header -->
+    <header class="topbar">
+      <div class="topbar-brand">
+        <img src="../../assets/icon-48.png" alt="Logo" class="topbar-logo" />
+        <div>
+          <h1>extensions-cross_browser-sync</h1>
+          <p class="subtitle">
+            Sync installed extensions &amp; enabled/disabled state across Chromium (Chrome, Edge, Brave, Vivaldi, Opera) and Firefox
+          </p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <span id="env-badge" class="badge">Detecting...</span>
+        <button id="header-sync-btn" class="btn btn-primary">Sync Now (Merge)</button>
+        <button id="header-push-btn" class="btn btn-secondary">Push ↑</button>
+        <button id="header-pull-btn" class="btn btn-secondary">Pull ↓</button>
+      </div>
+    </header>
+
+    <div id="alert-banner" class="alert-banner hidden"></div>
+
+    <main class="main-grid">
+      <!-- Left Column: Settings & Gist Configuration -->
+      <div class="col-settings">
+        <!-- Card 1: GitHub Gist Connection -->
+        <section class="card">
+          <h2>1. GitHub Gist Backend</h2>
+          <p class="card-desc">
+            Store your extension list in a private GitHub Gist. Create a
+            <a href="https://github.com/settings/tokens/new?scopes=gist&description=extensions-cross_browser-sync" target="_blank" rel="noopener">GitHub Personal Access Token</a>
+            with the <code>gist</code> scope.
+          </p>
+
+          <div class="form-group">
+            <label for="github-token">GitHub Personal Access Token</label>
+            <div class="input-row">
+              <input
+                type="password"
+                id="github-token"
+                placeholder="ghp_... or github_pat_..."
+                autocomplete="off"
+              />
+              <button type="button" id="toggle-token-btn" class="btn btn-secondary btn-sm">Show</button>
+            </div>
+          </div>
+
+          <div class="button-row">
+            <button type="button" id="discover-gist-btn" class="btn btn-secondary btn-sm">
+              Verify &amp; Auto-Discover Gist
+            </button>
+            <button type="button" id="create-gist-btn" class="btn btn-accent btn-sm">
+              + Create New Private Gist
+            </button>
+          </div>
+
+          <div class="form-group" style="margin-top: 12px;">
+            <label for="gist-id">
+              Gist ID
+              <a id="open-gist-link" href="#" target="_blank" rel="noopener" class="gist-link hidden">View on GitHub ↗</a>
+            </label>
+            <input
+              type="text"
+              id="gist-id"
+              placeholder="e.g. a1b2c3d4e5f6g7h8i9j0..."
+              autocomplete="off"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="device-name">Browser / Device Label</label>
+            <input
+              type="text"
+              id="device-name"
+              placeholder="e.g. Chrome on Work PC"
+              autocomplete="off"
+            />
+          </div>
+
+          <button type="button" id="save-gist-btn" class="btn btn-primary full-width">
+            Save Connection Settings
+          </button>
+        </section>
+
+        <!-- Card 2: Sync Behavior & Automation -->
+        <section class="card">
+          <h2>2. Sync Behavior &amp; Automation</h2>
+
+          <div class="form-group">
+            <label for="auto-sync-minutes">Periodic Background Sync</label>
+            <select id="auto-sync-minutes">
+              <option value="0">Disabled (Manual sync only)</option>
+              <option value="5">Every 5 minutes</option>
+              <option value="15">Every 15 minutes</option>
+              <option value="30">Every 30 minutes (Recommended)</option>
+              <option value="60">Every 60 minutes</option>
+            </select>
+          </div>
+
+          <label class="checkbox-row">
+            <input type="checkbox" id="auto-push-on-change" />
+            <span>Auto-push to Gist when I enable/disable or install an extension</span>
+          </label>
+
+          <label class="checkbox-row">
+            <input type="checkbox" id="auto-apply-enabled" />
+            <span>Automatically enable/disable local extensions when syncing</span>
+          </label>
+
+          <label class="checkbox-row">
+            <input type="checkbox" id="sync-disabled-extensions" />
+            <span>Include disabled extensions in sync payload</span>
+          </label>
+
+          <label class="checkbox-row">
+            <input type="checkbox" id="include-dev-extensions" />
+            <span>Include unpacked / development extensions</span>
+          </label>
+
+          <button type="button" id="save-prefs-btn" class="btn btn-secondary full-width" style="margin-top: 10px;">
+            Save Preferences
+          </button>
+        </section>
+
+        <!-- Card 3: Backup & Restore + Activity Log -->
+        <section class="card">
+          <h2>3. Local JSON Backup &amp; Activity Log</h2>
+          <p class="card-desc">
+            Export your cross-browser sync profile to a JSON file or import a snapshot manually.
+          </p>
+          <div class="button-row">
+            <button type="button" id="export-json-btn" class="btn btn-secondary btn-sm">
+              Export JSON ↓
+            </button>
+            <label class="btn btn-secondary btn-sm file-btn">
+              Import JSON ↑
+              <input type="file" id="import-json-input" accept=".json,application/json" hidden />
+            </label>
+          </div>
+
+          <h3 class="log-heading">Recent Sync Activity</h3>
+          <div id="sync-log-list" class="sync-log-list">
+            <div class="muted">No sync events recorded yet.</div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Right Column: Cross-Browser Extensions Matrix -->
+      <div class="col-matrix">
+        <section class="card matrix-card">
+          <div class="matrix-header">
+            <div>
+              <h2>Cross-Browser Extension Matrix</h2>
+              <p class="card-desc">
+                Compare local vs. cloud extensions, install missing ones with 1 click, or customize canonical sync keys to pair extensions across Chromium and Firefox.
+              </p>
+            </div>
+            <div class="matrix-stats" id="matrix-stats"></div>
+          </div>
+
+          <div class="matrix-toolbar">
+            <input
+              type="search"
+              id="matrix-search"
+              placeholder="Search by extension name, key, or ID..."
+            />
+            <select id="matrix-filter">
+              <option value="all">All Extensions</option>
+              <option value="missing">Missing on this Browser</option>
+              <option value="state-diff">Out of Sync (State Diff)</option>
+              <option value="in-sync">In Sync</option>
+              <option value="local-only">Local Only</option>
+              <option value="ignored">Ignored</option>
+            </select>
+            <button type="button" id="refresh-remote-btn" class="btn btn-secondary btn-sm">
+              Refresh from Gist
+            </button>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="ext-table">
+              <thead>
+                <tr>
+                  <th>Extension</th>
+                  <th>Sync Key (Cross-Browser Link)</th>
+                  <th>Browser IDs</th>
+                  <th>Status</th>
+                  <th>Local State</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="matrix-tbody">
+                <tr>
+                  <td colspan="6" class="empty-cell">Loading extensions...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>
+
