@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-03T16:11:38.331Z",
+  "updatedAt": "2026-11-03T16:44:04.930Z",
   "extensions": {
     "ublock-origin": {
       "key": "ublock-origin",
@@ -403,6 +403,45 @@
       "amoHash": "sha256:becd4d42749c57b5fbc22613ace4a93d0e47c2e646f8771a9e4f28c1c768cd89",
       "sizeBytes": 20664684,
       "updatedAt": "2026-11-03T16:11:38.330Z"
+    },
+    "udemy": {
+      "key": "udemy",
+      "name": "Udemy - Improved Course Library",
+      "fileName": "udemy.xpi",
+      "version": "1.1.2",
+      "firefoxId": "{e8ca5e09-cd73-43aa-a313-4a75af598960}",
+      "firefoxSlug": "udemy-improved-course-library",
+      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/4153072/udemy_improved_course_library-1.1.2.xpi",
+      "sha256": "b864fe1db41bd7bbaa50b9716fec3cfe5cf1e3e629cd86e9e8be2f7bd321a18b",
+      "amoHash": "sha256:b864fe1db41bd7bbaa50b9716fec3cfe5cf1e3e629cd86e9e8be2f7bd321a18b",
+      "sizeBytes": 25071,
+      "updatedAt": "2026-11-03T16:44:03.967Z"
+    },
+    "i-still-don-t-care-about-cookies": {
+      "key": "i-still-don-t-care-about-cookies",
+      "name": "I still don't care about cookies",
+      "fileName": "i-still-don-t-care-about-cookies.xpi",
+      "version": "1.1.9",
+      "firefoxId": "idcac-pub@guus.ninja",
+      "firefoxSlug": "istilldontcareaboutcookies",
+      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/4637154/istilldontcareaboutcookies-1.1.9.xpi",
+      "sha256": "42922f61cfc53e2103e492ddbe5736caf503d9dad4a88690efc4c64dac10d5c7",
+      "amoHash": "sha256:42922f61cfc53e2103e492ddbe5736caf503d9dad4a88690efc4c64dac10d5c7",
+      "sizeBytes": 567285,
+      "updatedAt": "2026-11-03T16:44:04.214Z"
+    },
+    "buster": {
+      "key": "buster",
+      "name": "Buster: Captcha Solver for Humans",
+      "fileName": "buster.xpi",
+      "version": "3.4.0",
+      "firefoxId": "{e58d3966-3d76-4cd9-8552-1582fbc800c1}",
+      "firefoxSlug": "buster-captcha-solver",
+      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/4859908/buster_captcha_solver-3.4.0.xpi",
+      "sha256": "4030ac4e6c6b6e1763654b159c7a0b921cbfb37e378204e4ad65ffea981d8b47",
+      "amoHash": "sha256:4030ac4e6c6b6e1763654b159c7a0b921cbfb37e378204e4ad65ffea981d8b47",
+      "sizeBytes": 6817227,
+      "updatedAt": "2026-11-03T16:44:04.585Z"
     }
   }
 }
