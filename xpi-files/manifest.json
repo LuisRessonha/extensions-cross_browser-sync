@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-03T15:44:26.051Z",
+  "updatedAt": "2026-11-03T16:11:38.331Z",
   "extensions": {
     "ublock-origin": {
       "key": "ublock-origin",
@@ -351,6 +351,58 @@
       "amoHash": "sha256:20bb60052190e00204970fc9d430e5c7756eab90a8e29f3006e79f2ed9f8efb8",
       "sizeBytes": 35581876,
       "updatedAt": "2026-11-03T15:44:26.051Z"
+    },
+    "ublock-origin-lite": {
+      "key": "ublock-origin-lite",
+      "name": "uBlock Origin Lite",
+      "fileName": "ublock-origin-lite.xpi",
+      "version": "2026.1026.1812",
+      "firefoxId": "uBOLiteRedux@raymondhill.net",
+      "firefoxSlug": "ublock-origin-lite",
+      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/5169913/ublock_origin_lite-2026.1026.1812.xpi",
+      "sha256": "b146e91f7221e25993388ddb0ed53772c24d5d2aa1c85215bdc1ca11c493d306",
+      "amoHash": "sha256:b146e91f7221e25993388ddb0ed53772c24d5d2aa1c85215bdc1ca11c493d306",
+      "sizeBytes": 8985898,
+      "updatedAt": "2026-11-03T16:11:37.168Z"
+    },
+    "don-t-track-me-google": {
+      "key": "don-t-track-me-google",
+      "name": "Don't track me Google",
+      "fileName": "don-t-track-me-google.xpi",
+      "version": "4.30",
+      "firefoxId": "dont-track-me-google@robwu.nl",
+      "firefoxSlug": "dont-track-me-google1",
+      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/4998037/dont_track_me_google1-4.30.xpi",
+      "sha256": "311a46a2f96a020cc2c5b1550cb2e41e0fb8308bdf6e72929a8e19be4a1371e9",
+      "amoHash": "sha256:311a46a2f96a020cc2c5b1550cb2e41e0fb8308bdf6e72929a8e19be4a1371e9",
+      "sizeBytes": 36759,
+      "updatedAt": "2026-11-03T16:11:37.395Z"
+    },
+    "video-download-helper": {
+      "key": "video-download-helper",
+      "name": "Video Download Helper",
+      "fileName": "video-download-helper.xpi",
+      "version": "10.6.7.2",
+      "firefoxId": "{b9db16a4-6edc-47ec-a1f4-b86292ed211d}",
+      "firefoxSlug": "video-downloadhelper",
+      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/5146939/video_downloadhelper-10.6.7.2.xpi",
+      "sha256": "abcddad43a3e5f9585078a52e95d938664a01cc1a1aeb32fad1d3bdfd6df56c2",
+      "amoHash": "sha256:abcddad43a3e5f9585078a52e95d938664a01cc1a1aeb32fad1d3bdfd6df56c2",
+      "sizeBytes": 3884443,
+      "updatedAt": "2026-11-03T16:11:37.696Z"
+    },
+    "adguard-adblocker": {
+      "key": "adguard-adblocker",
+      "name": "AdGuard AdBlocker",
+      "fileName": "adguard-adblocker.xpi",
+      "version": "5.5.3.5",
+      "firefoxId": "adguardadblocker@adguard.com",
+      "firefoxSlug": "adguard-adblocker",
+      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/5116233/adguard_adblocker-5.5.3.5.xpi",
+      "sha256": "becd4d42749c57b5fbc22613ace4a93d0e47c2e646f8771a9e4f28c1c768cd89",
+      "amoHash": "sha256:becd4d42749c57b5fbc22613ace4a93d0e47c2e646f8771a9e4f28c1c768cd89",
+      "sizeBytes": 20664684,
+      "updatedAt": "2026-11-03T16:11:38.330Z"
     }
   }
 }
