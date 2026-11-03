@@ -7,26 +7,6 @@ on:
         description: 'GitHub Gist ID to scan for extensions with valid Firefox & Chromium IDs/URLs'
         required: false
         type: string
-      key:
-        description: 'Single entry: Canonical key (optional, auto-derived from name if omitted)'
-        required: false
-        type: string
-      name:
-        description: 'Single entry: Extension display name'
-        required: false
-        type: string
-      chromium_id_or_url:
-        description: 'Single entry: Chromium 32-char ID or Chrome Web Store URL'
-        required: false
-        type: string
-      firefox_id_or_url:
-        description: 'Single entry: Firefox Add-on GUID, slug, or AMO URL'
-        required: false
-        type: string
-      edge_id:
-        description: 'Single entry: Optional Microsoft Edge Add-ons 32-char ID'
-        required: false
-        type: string
   schedule:
     # Run weekly on Mondays at 03:00 UTC (before the XPI download workflow at 04:00 UTC)
     - cron: '0 3 * * 1'
@@ -48,15 +28,10 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Validate candidates and update KNOWN_EXTENSIONS_CATALOG
+      - name: Validate candidates from Gist and update KNOWN_EXTENSIONS_CATALOG
         env:
           GIST_ID: ${{ inputs.gist_id || vars.GIST_ID }}
-          GIST_TOKEN: ${{ secrets.GIST_TOKEN || secrets.GITHUB_TOKEN }}
-          INPUT_KEY: ${{ inputs.key }}
-          INPUT_NAME: ${{ inputs.name }}
-          INPUT_CHROMIUM: ${{ inputs.chromium_id_or_url }}
-          INPUT_FIREFOX: ${{ inputs.firefox_id_or_url }}
-          INPUT_EDGE: ${{ inputs.edge_id }}
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
         run: node scripts/update-catalog.mjs
 
       - name: Rebuild extension packages and run tests if catalog changed

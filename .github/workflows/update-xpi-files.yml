@@ -44,7 +44,7 @@ jobs:
       - name: Download and update Firefox XPI files
         env:
           GIST_ID: ${{ inputs.gist_id || vars.GIST_ID }}
-          GIST_TOKEN: ${{ secrets.GIST_TOKEN || secrets.GITHUB_TOKEN }}
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
         run: |
           if [ "${{ inputs.force }}" = "true" ]; then
             node scripts/download-xpi.mjs --force

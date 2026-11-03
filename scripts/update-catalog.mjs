@@ -5,7 +5,6 @@ import {
   buildCatalogEntry,
   formatCatalogEntrySnippet,
   isChromiumExtensionId,
-  parseAndResolveManualBrowserId,
   resolveChromiumExtensionFromStore,
   resolveFirefoxAddonFromAmo
 } from '../src/shared/matcher.js';
@@ -101,19 +100,35 @@ async function loadCandidatesFromGist() {
   const gistId = process.env.GIST_ID?.trim();
   if (!gistId) return [];
 
-  const token = (process.env.GIST_TOKEN || process.env.GITHUB_TOKEN || '').trim();
-  const headers = {
+  const token = (process.env.GIST_TOKEN || '').trim();
+  const baseHeaders = {
     Accept: 'application/vnd.github+json',
-    'X-GitHub-Api-Version': '2022-11-28'
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': 'extensions-cross_browser-sync'
   };
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
 
   console.log(`Fetching candidate extensions from Gist: ${gistId}...`);
-  const res = await fetch(`https://api.github.com/gists/${encodeURIComponent(gistId)}`, {
-    headers
-  });
+  const gistUrl = `https://api.github.com/gists/${encodeURIComponent(gistId)}`;
+
+  let res;
+  // Note: GitHub Actions default GITHUB_TOKEN (ghs_...) is forbidden from calling /gists API (403).
+  // Secret Gists can be read by ID without Authorization, or with a Personal Access Token.
+  if (token && !token.startsWith('ghs_')) {
+    res = await fetch(gistUrl, {
+      headers: {
+        ...baseHeaders,
+        Authorization: `Bearer ${token}`
+      }
+    });
+    if (res.status === 401 || res.status === 403) {
+      console.warn(
+        `Authenticated Gist request returned HTTP ${res.status}; retrying unauthenticated Gist fetch by ID...`
+      );
+      res = await fetch(gistUrl, { headers: baseHeaders });
+    }
+  } else {
+    res = await fetch(gistUrl, { headers: baseHeaders });
+  }
 
   if (!res.ok) {
     throw new Error(`Failed to fetch Gist ${gistId}: HTTP ${res.status} ${res.statusText}`);
@@ -122,41 +137,19 @@ async function loadCandidatesFromGist() {
   const data = await res.json();
   const fileObj =
     data.files?.['extensions-cross_browser-sync.json'] || Object.values(data.files || {})[0];
-  if (!fileObj?.content) return [];
+  if (!fileObj) return [];
 
-  const parsed = JSON.parse(fileObj.content);
-  return Object.values(parsed?.extensions || {});
-}
-
-/**
- * Loads an optional single candidate extension from environment variables (for manual workflow_dispatch input).
- */
-async function loadCandidateFromEnvInputs() {
-  const rawCr = process.env.INPUT_CHROMIUM?.trim();
-  const rawFf = process.env.INPUT_FIREFOX?.trim();
-  if (!rawCr && !rawFf) return [];
-
-  const parsedCr = rawCr ? await parseAndResolveManualBrowserId(rawCr, 'chromium') : { id: '' };
-  const parsedFf = rawFf ? await parseAndResolveManualBrowserId(rawFf, 'firefox') : { id: '' };
-
-  const name = process.env.INPUT_NAME?.trim() || process.env.INPUT_KEY?.trim() || '';
-  const key = process.env.INPUT_KEY?.trim() || '';
-
-  return [
-    {
-      key,
-      name,
-      ids: {
-        chromium: parsedCr.id || '',
-        edge: process.env.INPUT_EDGE?.trim() || '',
-        firefox: parsedFf.id || ''
-      },
-      storeUrls: {
-        chromium: parsedCr.storeUrl || '',
-        firefox: parsedFf.storeUrl || rawFf || ''
-      }
+  let contentText = fileObj.content;
+  if ((!contentText || fileObj.truncated) && fileObj.raw_url) {
+    const rawRes = await fetch(fileObj.raw_url, { headers: baseHeaders });
+    if (rawRes.ok) {
+      contentText = await rawRes.text();
     }
-  ];
+  }
+  if (!contentText) return [];
+
+  const parsed = JSON.parse(contentText);
+  return Object.values(parsed?.extensions || {});
 }
 
 /**
@@ -173,13 +166,10 @@ function existsInCatalog(entry) {
 }
 
 async function main() {
-  const candidates = [
-    ...(await loadCandidateFromEnvInputs()),
-    ...(await loadCandidatesFromGist())
-  ];
+  const candidates = await loadCandidatesFromGist();
 
   if (candidates.length === 0) {
-    console.log('No candidate extensions provided via inputs or GIST_ID.');
+    console.log('No candidate extensions found (ensure GIST_ID is provided and the Gist is non-empty).');
     return;
   }
 

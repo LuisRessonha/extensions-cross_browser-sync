@@ -37,20 +37,31 @@ async function loadGistExtensions() {
   const gistId = process.env.GIST_ID?.trim();
   if (!gistId) return [];
 
-  const token = (process.env.GIST_TOKEN || process.env.GITHUB_TOKEN || '').trim();
-  const headers = {
+  const token = (process.env.GIST_TOKEN || '').trim();
+  const baseHeaders = {
     Accept: 'application/vnd.github+json',
-    'X-GitHub-Api-Version': '2022-11-28'
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': 'extensions-cross_browser-sync'
   };
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
 
   try {
     console.log(`Fetching additional extensions from Gist: ${gistId}...`);
-    const res = await fetch(`https://api.github.com/gists/${encodeURIComponent(gistId)}`, {
-      headers
-    });
+    const gistUrl = `https://api.github.com/gists/${encodeURIComponent(gistId)}`;
+    let res;
+    if (token && !token.startsWith('ghs_')) {
+      res = await fetch(gistUrl, {
+        headers: {
+          ...baseHeaders,
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (res.status === 401 || res.status === 403) {
+        res = await fetch(gistUrl, { headers: baseHeaders });
+      }
+    } else {
+      res = await fetch(gistUrl, { headers: baseHeaders });
+    }
+
     if (!res.ok) {
       console.warn(`Could not fetch Gist ${gistId} (HTTP ${res.status}). Proceeding with catalog only.`);
       return [];
