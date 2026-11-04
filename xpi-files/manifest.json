@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-04T10:04:32.207Z",
+  "updatedAt": "2026-11-04T10:31:45.501Z",
   "extensions": {
     "bitwarden": {
       "key": "bitwarden",
@@ -75,6 +75,21 @@
       "amoHash": "sha256:4030ac4e6c6b6e1763654b159c7a0b921cbfb37e378204e4ad65ffea981d8b47",
       "sizeBytes": 6817227,
       "updatedAt": "2026-11-04T10:04:32.207Z"
+    },
+    "demandware-with-ease": {
+      "key": "demandware-with-ease",
+      "name": "Demandware With Ease",
+      "fileName": "demandware-with-ease.xpi",
+      "xpiFile": "xpi-files/demandware-with-ease.xpi",
+      "version": "4.9.1",
+      "chromiumId": "ffhabonelknmejmdnekedmijlhebpcio",
+      "firefoxId": "dwithease@forkpoint.com",
+      "firefoxSlug": "dwithease",
+      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/4958315/dwithease-4.9.1.xpi",
+      "sha256": "6b5869e465be8b043409e4f8aecd158e8144ad67de32ffea0fc3f14f070de961",
+      "amoHash": "sha256:6b5869e465be8b043409e4f8aecd158e8144ad67de32ffea0fc3f14f070de961",
+      "sizeBytes": 4034213,
+      "updatedAt": "2026-11-04T10:31:45.501Z"
     }
   }
 }

@@ -49,5 +49,13 @@ export const KNOWN_EXTENSIONS_CATALOG = [
     firefoxId: '{e58d3966-3d76-4cd9-8552-1582fbc800c1}',
     firefoxSlug: 'buster-captcha-solver',
     xpiFile: 'xpi-files/buster.xpi'
+  },
+  {
+    key: 'demandware-with-ease',
+    name: 'Demandware With Ease',
+    chromiumId: 'ffhabonelknmejmdnekedmijlhebpcio',
+    firefoxId: 'dwithease@forkpoint.com',
+    firefoxSlug: 'dwithease',
+    xpiFile: 'xpi-files/demandware-with-ease.xpi'
   }
 ];
