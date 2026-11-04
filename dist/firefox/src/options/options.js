@@ -267,6 +267,7 @@ function renderMatrix() {
       const saveKeyBtn = document.createElement('button');
       saveKeyBtn.className = 'btn btn-secondary btn-sm hidden';
       saveKeyBtn.textContent = 'Save';
+      saveKeyBtn.title = 'Save custom canonical sync key for cross-browser pairing';
 
       input.addEventListener('input', () => {
         if (input.value.trim() && input.value.trim() !== item.key) {
@@ -416,6 +417,7 @@ function renderMatrix() {
     const saveIdsBtn = document.createElement('button');
     saveIdsBtn.className = 'btn btn-secondary btn-sm hidden';
     saveIdsBtn.textContent = 'Save IDs';
+    saveIdsBtn.title = 'Save custom Chromium and Firefox IDs or store URLs for this extension';
     saveIdsBtn.style.alignSelf = 'flex-start';
 
     const checkIdsDirty = () => {
@@ -478,6 +480,11 @@ function renderMatrix() {
       toggleBtn.className = `btn btn-sm ${item.localEnabled ? 'btn-accent' : 'btn-secondary'}`;
       toggleBtn.textContent = item.localEnabled ? 'Enabled' : 'Disabled';
       toggleBtn.disabled = !item.mayDisable;
+      toggleBtn.title = !item.mayDisable
+        ? 'This extension cannot be disabled'
+        : item.localEnabled
+        ? 'Click to disable this extension locally'
+        : 'Click to enable this extension locally';
       toggleBtn.addEventListener('click', async () => {
         try {
           const res = await sendMessage({
@@ -521,6 +528,8 @@ function renderMatrix() {
       const autoInstallOpt = document.createElement('button');
       autoInstallOpt.type = 'button';
       autoInstallOpt.className = 'install-dropdown-item';
+      autoInstallOpt.title =
+        'Install this extension directly from the official browser store (Chrome Web Store / Firefox AMO)';
       const autoTitle = document.createElement('strong');
       autoTitle.textContent = 'Auto Install';
       const autoSub = document.createElement('span');
@@ -546,6 +555,8 @@ function renderMatrix() {
       const fileInstallOpt = document.createElement('button');
       fileInstallOpt.type = 'button';
       fileInstallOpt.className = 'install-dropdown-item';
+      fileInstallOpt.title =
+        'Install this extension from its .xpi package in your configured Git repository (xpi-files/)';
       const fileTitle = document.createElement('strong');
       fileTitle.textContent = 'Auto Install from File';
       const fileSub = document.createElement('span');
@@ -605,6 +616,10 @@ function renderMatrix() {
     const ignoreBtn = document.createElement('button');
     ignoreBtn.className = 'btn btn-sm btn-secondary';
     ignoreBtn.textContent = item.status === 'ignored' ? 'Unignore' : 'Ignore';
+    ignoreBtn.title =
+      item.status === 'ignored'
+        ? 'Include this extension in cross-browser sync again'
+        : 'Exclude this extension from cross-browser sync (saved in Gist)';
     ignoreBtn.addEventListener('click', async () => {
       try {
         const res = await sendMessage({

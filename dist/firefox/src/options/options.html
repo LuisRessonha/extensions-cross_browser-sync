@@ -20,10 +20,10 @@
         </div>
       </div>
       <div class="topbar-actions">
-        <span id="env-badge" class="badge">Detecting...</span>
-        <button id="header-sync-btn" class="btn btn-primary">Sync Now (Merge)</button>
-        <button id="header-push-btn" class="btn btn-secondary">Push ↑</button>
-        <button id="header-pull-btn" class="btn btn-secondary">Pull ↓</button>
+        <span id="env-badge" class="badge" title="Detected browser environment">Detecting...</span>
+        <button id="header-sync-btn" class="btn btn-primary" title="Bidirectional smart sync: merge local and Gist extension lists and states">Sync Now (Merge)</button>
+        <button id="header-push-btn" class="btn btn-secondary" title="Push local extensions and enabled/disabled state to your GitHub Gist">Push ↑</button>
+        <button id="header-pull-btn" class="btn btn-secondary" title="Pull extension states from your GitHub Gist and apply them locally">Pull ↓</button>
         <button id="open-settings-modal-btn" class="btn btn-secondary" title="Open Sync &amp; Gist Settings">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="3"></circle>
@@ -56,10 +56,10 @@
               id="matrix-search"
               placeholder="Search by extension name, key, or ID..."
             />
-            <button type="button" id="matrix-install-missing-btn" class="btn btn-accent btn-sm hidden">
+            <button type="button" id="matrix-install-missing-btn" class="btn btn-accent btn-sm hidden" title="Automatically install or open store pages for all missing extensions">
               Auto-Install All Missing
             </button>
-            <button type="button" id="refresh-remote-btn" class="btn btn-secondary btn-sm">
+            <button type="button" id="refresh-remote-btn" class="btn btn-secondary btn-sm" title="Fetch the latest extension list from your GitHub Gist without modifying local state">
               Refresh from Gist
             </button>
           </div>
@@ -92,7 +92,7 @@
       <div class="modal-dialog">
         <div class="modal-header">
           <h2 id="settings-modal-title">Sync &amp; Gist Settings</h2>
-          <button type="button" id="close-settings-modal-btn" class="modal-close-btn" aria-label="Close settings">✕</button>
+          <button type="button" id="close-settings-modal-btn" class="modal-close-btn" aria-label="Close settings" title="Close settings window">✕</button>
         </div>
         <div class="modal-body">
           <!-- Card 1: GitHub Gist Connection -->
@@ -100,7 +100,7 @@
             <h2>1. GitHub Gist Backend</h2>
             <p class="card-desc">
               Store your extension list in a private GitHub Gist. Create a
-              <a href="https://github.com/settings/tokens/new?scopes=gist&description=extensions-cross_browser-sync" target="_blank" rel="noopener">GitHub Personal Access Token</a>
+              <a href="https://github.com/settings/tokens/new?scopes=gist&description=extensions-cross_browser-sync" target="_blank" rel="noopener" title="Open GitHub token creation page with gist scope">GitHub Personal Access Token</a>
               with the <code>gist</code> scope.
             </p>
 
@@ -113,15 +113,15 @@
                   placeholder="ghp_... or github_pat_..."
                   autocomplete="off"
                 />
-                <button type="button" id="toggle-token-btn" class="btn btn-secondary btn-sm">Show</button>
+                <button type="button" id="toggle-token-btn" class="btn btn-secondary btn-sm" title="Show or hide GitHub Personal Access Token">Show</button>
               </div>
             </div>
 
             <div class="button-row">
-              <button type="button" id="discover-gist-btn" class="btn btn-secondary btn-sm">
+              <button type="button" id="discover-gist-btn" class="btn btn-secondary btn-sm" title="Verify your GitHub token and search your account for an existing sync Gist">
                 Verify &amp; Auto-Discover Gist
               </button>
-              <button type="button" id="create-gist-btn" class="btn btn-accent btn-sm">
+              <button type="button" id="create-gist-btn" class="btn btn-accent btn-sm" title="Create a new private GitHub Gist initialized with your currently installed extensions">
                 + Create New Private Gist
               </button>
             </div>
@@ -129,7 +129,7 @@
             <div class="form-group" style="margin-top: 12px;">
               <label for="gist-id">
                 Gist ID
-                <a id="open-gist-link" href="#" target="_blank" rel="noopener" class="gist-link hidden">View on GitHub ↗</a>
+                <a id="open-gist-link" href="#" target="_blank" rel="noopener" class="gist-link hidden" title="Open your sync Gist on GitHub in a new tab">View on GitHub ↗</a>
               </label>
               <input
                 type="text"
@@ -154,7 +154,7 @@
             <div class="form-group">
               <label for="git-repo-url">
                 <span>Git Repository URL (for <code>xpi-files</code> installation)</span>
-                <a id="open-repo-link" href="#" target="_blank" rel="noopener" class="gist-link hidden">View Repo ↗</a>
+                <a id="open-repo-link" href="#" target="_blank" rel="noopener" class="gist-link hidden" title="Open your configured Git repository on GitHub in a new tab">View Repo ↗</a>
               </label>
               <input
                 type="text"
@@ -175,7 +175,7 @@
                   placeholder="ghp_... or github_pat_... (optional)"
                   autocomplete="off"
                 />
-                <button type="button" id="toggle-repo-token-btn" class="btn btn-secondary btn-sm">Show</button>
+                <button type="button" id="toggle-repo-token-btn" class="btn btn-secondary btn-sm" title="Show or hide Git Repo Access Token">Show</button>
               </div>
             </div>
 
@@ -191,10 +191,10 @@
               />
             </div>
 
-            <button type="button" id="save-gist-btn" class="btn btn-primary full-width">
+            <button type="button" id="save-gist-btn" class="btn btn-primary full-width" title="Save GitHub Gist and Git repository connection settings">
               Save Connection Settings
             </button>
-            <button type="button" id="clear-gist-btn" class="btn btn-danger full-width" style="margin-top: 8px;">
+            <button type="button" id="clear-gist-btn" class="btn btn-danger full-width" style="margin-top: 8px;" title="Empty all saved extension records from your remote GitHub Gist">
               Clear Saved Gist Data
             </button>
           </section>
@@ -234,7 +234,7 @@
               <span>Include unpacked / development extensions</span>
             </label>
 
-            <button type="button" id="save-prefs-btn" class="btn btn-secondary full-width" style="margin-top: 10px;">
+            <button type="button" id="save-prefs-btn" class="btn btn-secondary full-width" style="margin-top: 10px;" title="Save automatic sync schedule and behavior preferences">
               Save Preferences
             </button>
           </section>
@@ -246,17 +246,17 @@
               Export or import all your extension settings (tokens, Gist ID, Git repo, sync preferences, ignored extensions, and custom ID mappings), or back up your extension list snapshot.
             </p>
             <div class="button-row" style="margin-bottom: 10px;">
-              <button type="button" id="export-settings-btn" class="btn btn-primary btn-sm">
+              <button type="button" id="export-settings-btn" class="btn btn-primary btn-sm" title="Download all extension settings, tokens, and custom mappings as a JSON file">
                 Export Settings ↓
               </button>
-              <label class="btn btn-secondary btn-sm file-btn">
+              <label class="btn btn-secondary btn-sm file-btn" title="Restore extension settings, tokens, and custom mappings from a JSON file">
                 Import Settings ↑
                 <input type="file" id="import-settings-input" accept=".json,application/json" hidden />
               </label>
-              <button type="button" id="export-json-btn" class="btn btn-secondary btn-sm">
+              <button type="button" id="export-json-btn" class="btn btn-secondary btn-sm" title="Download a JSON snapshot of your locally installed extensions">
                 Export Extensions JSON ↓
               </button>
-              <label class="btn btn-secondary btn-sm file-btn">
+              <label class="btn btn-secondary btn-sm file-btn" title="Load an exported extensions JSON file into the comparison matrix">
                 Import Extensions JSON ↑
                 <input type="file" id="import-json-input" accept=".json,application/json" hidden />
               </label>
@@ -276,7 +276,7 @@
       <div class="modal-dialog" style="max-width: 560px;">
         <div class="modal-header">
           <h2 id="catalog-json-modal-title">Catalog Entry Snippet</h2>
-          <button type="button" id="close-catalog-json-modal-btn" class="modal-close-btn" aria-label="Close">✕</button>
+          <button type="button" id="close-catalog-json-modal-btn" class="modal-close-btn" aria-label="Close" title="Close catalog snippet window">✕</button>
         </div>
         <div class="modal-body">
           <p class="card-desc" style="margin-bottom: 4px;">
@@ -284,7 +284,7 @@
           </p>
           <pre id="catalog-json-pre" class="catalog-code-block"></pre>
           <div class="button-row" style="justify-content: flex-end;">
-            <button type="button" id="copy-catalog-json-btn" class="btn btn-primary btn-sm">
+            <button type="button" id="copy-catalog-json-btn" class="btn btn-primary btn-sm" title="Copy this catalog entry snippet to your clipboard">
               Copy to Clipboard
             </button>
           </div>

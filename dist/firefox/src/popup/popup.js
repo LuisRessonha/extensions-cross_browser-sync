@@ -251,6 +251,8 @@ function renderDashboard() {
       const autoInstallOpt = document.createElement('button');
       autoInstallOpt.type = 'button';
       autoInstallOpt.className = 'install-dropdown-item';
+      autoInstallOpt.title =
+        'Install this extension directly from the official browser store (Chrome Web Store / Firefox AMO)';
       const autoTitle = document.createElement('strong');
       autoTitle.textContent = 'Auto Install';
       const autoSub = document.createElement('span');
@@ -276,6 +278,8 @@ function renderDashboard() {
       const fileInstallOpt = document.createElement('button');
       fileInstallOpt.type = 'button';
       fileInstallOpt.className = 'install-dropdown-item';
+      fileInstallOpt.title =
+        'Install this extension from its .xpi package in your configured Git repository (xpi-files/)';
       const fileTitle = document.createElement('strong');
       fileTitle.textContent = 'Auto Install from File';
       const fileSub = document.createElement('span');
