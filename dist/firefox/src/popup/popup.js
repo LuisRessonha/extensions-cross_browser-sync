@@ -1,4 +1,8 @@
 import { ext } from '../shared/browser-polyfill.js';
+import {
+  getCachedExtensionIconUrl,
+  resolveExtensionIconUrl
+} from '../shared/matcher.js';
 
 let currentState = null;
 let activeTab = 'all';
@@ -197,19 +201,7 @@ function renderDashboard() {
 
     const left = document.createElement('div');
     left.className = 'ext-left';
-
-    if (item.iconUrl) {
-      const img = document.createElement('img');
-      img.className = 'ext-icon';
-      img.src = item.iconUrl;
-      img.alt = '';
-      img.addEventListener('error', () => {
-        img.replaceWith(createFallbackIcon(item.name));
-      });
-      left.appendChild(img);
-    } else {
-      left.appendChild(createFallbackIcon(item.name));
-    }
+    left.appendChild(createPopupIconElement(item));
 
     const info = document.createElement('div');
     info.className = 'ext-info';
@@ -427,6 +419,49 @@ function createFallbackIcon(name) {
   div.className = 'ext-icon-fallback';
   div.textContent = (name || '?').trim().charAt(0).toUpperCase();
   return div;
+}
+
+function createPopupIconElement(item) {
+  const cachedIconUrl = getCachedExtensionIconUrl(item);
+  const isMozExtUrl = Boolean(item.iconUrl && item.iconUrl.startsWith('moz-extension://'));
+  const initialSrc = cachedIconUrl || (!isMozExtUrl ? item.iconUrl : '') || item.iconUrl || '';
+
+  const fallbackAndResolve = (currentEl) => {
+    const fb = createFallbackIcon(item.name);
+    if (currentEl?.parentNode) {
+      currentEl.replaceWith(fb);
+    }
+    resolveExtensionIconUrl(item)
+      .then((resolvedUrl) => {
+        if (resolvedUrl && fb.parentNode) {
+          const resolvedImg = document.createElement('img');
+          resolvedImg.className = 'ext-icon';
+          resolvedImg.src = resolvedUrl;
+          resolvedImg.alt = '';
+          resolvedImg.addEventListener('error', () => {
+            if (resolvedImg.parentNode) {
+              resolvedImg.replaceWith(createFallbackIcon(item.name));
+            }
+          });
+          fb.replaceWith(resolvedImg);
+        }
+      })
+      .catch(() => {});
+    return fb;
+  };
+
+  if (initialSrc) {
+    const img = document.createElement('img');
+    img.className = 'ext-icon';
+    img.src = initialSrc;
+    img.alt = '';
+    img.addEventListener('error', () => {
+      fallbackAndResolve(img);
+    });
+    return img;
+  }
+
+  return fallbackAndResolve(null);
 }
 
 async function runSync(mode) {

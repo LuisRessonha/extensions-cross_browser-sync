@@ -321,7 +321,8 @@ export async function resolveFirefoxAddonFromAmo(record) {
           firefoxId: item.guid,
           firefoxSlug: item.slug || null,
           firefoxUrl: item.url,
-          xpiUrl: item.current_version?.file?.url || null
+          xpiUrl: item.current_version?.file?.url || null,
+          iconUrl: item.icons?.['64'] || item.icons?.['128'] || item.icon_url || null
         };
       }
     }
@@ -339,7 +340,8 @@ export async function resolveFirefoxAddonFromAmo(record) {
           firefoxId: top.guid,
           firefoxSlug: top.slug || null,
           firefoxUrl: top.url,
-          xpiUrl: top.current_version?.file?.url || null
+          xpiUrl: top.current_version?.file?.url || null,
+          iconUrl: top.icons?.['64'] || top.icons?.['128'] || top.icon_url || null
         };
       }
     }
@@ -1013,6 +1015,139 @@ export async function checkRepoXpiAvailabilityForItems(items = [], settings = {}
   );
 
   return availableByKey;
+}
+
+const ICON_CACHE_STORAGE_KEY = 'ecbs_icon_cache_v1';
+let memoryIconCache = null;
+const pendingIconLookups = new Map();
+
+function loadIconCache() {
+  if (memoryIconCache) return memoryIconCache;
+  memoryIconCache = {};
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(ICON_CACHE_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          memoryIconCache = parsed;
+        }
+      }
+    }
+  } catch {
+    // Ignore localStorage access errors
+  }
+  return memoryIconCache;
+}
+
+function saveIconCacheEntry(cacheKey, iconUrl) {
+  if (!cacheKey || !iconUrl) return;
+  const cache = loadIconCache();
+  cache[cacheKey] = iconUrl;
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(ICON_CACHE_STORAGE_KEY, JSON.stringify(cache));
+    }
+  } catch {
+    // Ignore quota/storage errors
+  }
+}
+
+/**
+ * Returns a cached HTTPS store icon URL for an extension if already resolved.
+ *
+ * @param {object} item
+ * @returns {string}
+ */
+export function getCachedExtensionIconUrl(item) {
+  const cacheKey = item?.key || item?.localId || '';
+  if (!cacheKey) return '';
+  const cache = loadIconCache();
+  return cache[cacheKey] || '';
+}
+
+/**
+ * Resolves an accessible HTTPS icon URL for an extension via Mozilla AMO API v5.
+ * Useful on Firefox (where `moz-extension://<other-uuid>/...` icons from `management.getAll()`
+ * are blocked by cross-extension isolation unless declared in `web_accessible_resources`)
+ * and for missing extensions.
+ *
+ * @param {object} item
+ * @returns {Promise<string>}
+ */
+export async function resolveExtensionIconUrl(item) {
+  if (!item) return '';
+  const cacheKey = item.key || item.localId || item.name || '';
+  const cached = getCachedExtensionIconUrl(item);
+  if (cached) return cached;
+
+  if (cacheKey && pendingIconLookups.has(cacheKey)) {
+    return pendingIconLookups.get(cacheKey);
+  }
+
+  const lookupPromise = (async () => {
+    try {
+      const catalogEntry = findCatalogEntry({
+        key: item.key,
+        name: item.name,
+        id: item.localId || item.ids?.chromium || item.ids?.firefox || item.ids?.edge
+      });
+
+      const localFirefoxGuid =
+        item.localId && !isChromiumExtensionId(item.localId) ? item.localId : '';
+      const candidates = [
+        catalogEntry?.firefoxSlug,
+        extractFirefoxSlugFromUrl(item.storeUrls?.firefox),
+        extractFirefoxSlugFromUrl(item.storeInfo?.url),
+        item.ids?.firefox,
+        localFirefoxGuid,
+        catalogEntry?.firefoxId
+      ].filter(Boolean);
+
+      for (const idOrSlug of new Set(candidates)) {
+        try {
+          const res = await fetch(
+            `https://addons.mozilla.org/api/v5/addons/addon/${encodeURIComponent(idOrSlug)}/`
+          );
+          if (res.ok) {
+            const data = await res.json();
+            const iconUrl =
+              data?.icons?.['64'] ||
+              data?.icons?.['128'] ||
+              data?.icons?.['32'] ||
+              data?.icon_url ||
+              '';
+            if (iconUrl && iconUrl.startsWith('https://')) {
+              saveIconCacheEntry(cacheKey, iconUrl);
+              return iconUrl;
+            }
+          }
+        } catch {
+          // Try next candidate
+        }
+      }
+
+      if (item.name) {
+        const amo = await resolveFirefoxAddonFromAmo(item);
+        if (amo?.iconUrl && amo.iconUrl.startsWith('https://')) {
+          saveIconCacheEntry(cacheKey, amo.iconUrl);
+          return amo.iconUrl;
+        }
+      }
+    } catch {
+      // Ignore lookup failures
+    } finally {
+      if (cacheKey) {
+        pendingIconLookups.delete(cacheKey);
+      }
+    }
+    return '';
+  })();
+
+  if (cacheKey) {
+    pendingIconLookups.set(cacheKey, lookupPromise);
+  }
+  return lookupPromise;
 }
 
 

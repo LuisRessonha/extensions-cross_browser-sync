@@ -5,8 +5,10 @@ import {
   buildCatalogEntry,
   findCatalogEntry,
   formatCatalogEntrySnippet,
+  getCachedExtensionIconUrl,
   getStoreInstallInfo,
-  parseGitRepoUrl
+  parseGitRepoUrl,
+  resolveExtensionIconUrl
 } from '../shared/matcher.js';
 
 let currentState = null;
@@ -106,6 +108,56 @@ function updateRepoLink(repoUrl) {
   } else {
     els.openRepoLink.classList.add('hidden');
   }
+}
+
+function createFallbackBadge(name) {
+  const fb = document.createElement('div');
+  fb.className = 'cell-fallback';
+  fb.textContent = (name || '?').trim().charAt(0).toUpperCase();
+  return fb;
+}
+
+function createMatrixIconElement(item) {
+  const cachedIconUrl = getCachedExtensionIconUrl(item);
+  const isMozExtUrl = Boolean(item.iconUrl && item.iconUrl.startsWith('moz-extension://'));
+  const initialSrc = cachedIconUrl || (!isMozExtUrl ? item.iconUrl : '') || item.iconUrl || '';
+
+  const fallbackAndResolve = (currentEl) => {
+    const fb = createFallbackBadge(item.name);
+    if (currentEl?.parentNode) {
+      currentEl.replaceWith(fb);
+    }
+    resolveExtensionIconUrl(item)
+      .then((resolvedUrl) => {
+        if (resolvedUrl && fb.parentNode) {
+          const resolvedImg = document.createElement('img');
+          resolvedImg.className = 'cell-icon';
+          resolvedImg.src = resolvedUrl;
+          resolvedImg.alt = '';
+          resolvedImg.addEventListener('error', () => {
+            if (resolvedImg.parentNode) {
+              resolvedImg.replaceWith(createFallbackBadge(item.name));
+            }
+          });
+          fb.replaceWith(resolvedImg);
+        }
+      })
+      .catch(() => {});
+    return fb;
+  };
+
+  if (initialSrc) {
+    const img = document.createElement('img');
+    img.className = 'cell-icon';
+    img.src = initialSrc;
+    img.alt = '';
+    img.addEventListener('error', () => {
+      fallbackAndResolve(img);
+    });
+    return img;
+  }
+
+  return fallbackAndResolve(null);
 }
 
 async function refreshXpiAvailability() {
@@ -257,18 +309,7 @@ function renderMatrix() {
     const tdExt = document.createElement('td');
     const extWrap = document.createElement('div');
     extWrap.className = 'cell-ext';
-    if (item.iconUrl) {
-      const img = document.createElement('img');
-      img.className = 'cell-icon';
-      img.src = item.iconUrl;
-      img.alt = '';
-      extWrap.appendChild(img);
-    } else {
-      const fb = document.createElement('div');
-      fb.className = 'cell-fallback';
-      fb.textContent = (item.name || '?').charAt(0).toUpperCase();
-      extWrap.appendChild(fb);
-    }
+    extWrap.appendChild(createMatrixIconElement(item));
     const nameBox = document.createElement('div');
     const titleEl = document.createElement('div');
     titleEl.style.fontWeight = '600';
