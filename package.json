@@ -5,6 +5,11 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "package": "node scripts/package.mjs",
+    "package:patch": "node scripts/package.mjs patch",
+    "package:minor": "node scripts/package.mjs minor",
+    "package:major": "node scripts/package.mjs major",
+    "zip": "node scripts/package.mjs",
     "icons": "node scripts/generate-icons.mjs",
     "download:xpi": "node scripts/download-xpi.mjs",
     "update:catalog": "node scripts/update-catalog.mjs",
@@ -24,4 +29,3 @@
   ],
   "license": "MIT"
 }
-

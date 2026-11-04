@@ -76,13 +76,27 @@ Missing extensions display an **`Install ▾`** dropdown in both the **Popup** a
 
 ## Quick Start & Installation
 
-### 1. Build Browser Packages
+### 1. Build & Package Browser Extensions
 
 ```bash
+# Build unpacked targets (dist/chromium and dist/firefox)
 npm run build
+
+# Package store-ready ZIPs for Chrome Web Store & Mozilla AMO (current version)
+npm run package
+
+# Bump version and package automatically (patch: 1.0.1 -> 1.0.2)
+npm run package:patch
+
+# Or on Windows PowerShell:
+.\scripts\package.ps1 patch
 ```
 
-This generates icons in `assets/` and outputs clean browser-specific packages from `src/`:
+This outputs store-ready archives in `dist/`:
+- `dist/Cross-Browser-Extensions-Sync-chrome-v<version>.zip` — Upload directly to **Chrome Web Store Developer Dashboard**
+- `dist/Cross-Browser-Extensions-Sync-firefox-v<version>.zip` — Upload directly to **Mozilla Add-on Developer Hub (AMO)**
+
+Unpacked development builds are also generated in:
 - `dist/chromium/` — For **Chrome, Brave, Edge, Vivaldi, Opera**
 - `dist/firefox/` — For **Firefox** (with `background.scripts` and `browser_specific_settings.gecko`)
 
