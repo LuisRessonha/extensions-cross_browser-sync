@@ -3,7 +3,7 @@
   "name": "extensions-cross_browser-sync",
   "short_name": "ExtSync",
   "version": "1.0.0",
-  "description": "Sync your installed browser extensions and enabled/disabled state across Chromium browsers (Chrome, Edge, Brave, Vivaldi, Opera) and Firefox via GitHub Gist.",
+  "description": "Sync your installed browser extensions and state across Chromium browsers and Firefox via GitHub Gist.",
   "icons": {
     "16": "assets/icon-16.png",
     "32": "assets/icon-32.png",
