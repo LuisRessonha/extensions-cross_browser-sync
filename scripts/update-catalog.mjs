@@ -114,6 +114,11 @@ async function loadCandidatesFromGist() {
   const gistId = process.env.GIST_ID?.trim();
   if (!gistId) return [];
 
+  if (process.env.GITHUB_ACTIONS === 'true') {
+    // Mask the Gist ID in GitHub Actions logs even if passed via workflow_dispatch input or vars.GIST_ID
+    console.log(`::add-mask::${gistId}`);
+  }
+
   const token = (process.env.GIST_TOKEN || '').trim();
   const baseHeaders = {
     Accept: 'application/vnd.github+json',
@@ -121,7 +126,7 @@ async function loadCandidatesFromGist() {
     'User-Agent': 'extensions-cross_browser-sync'
   };
 
-  console.log(`Fetching candidate extensions from Gist: ${gistId}...`);
+  console.log('Fetching candidate extensions from configured Gist...');
   const gistUrl = `https://api.github.com/gists/${encodeURIComponent(gistId)}`;
 
   let res;
@@ -145,7 +150,7 @@ async function loadCandidatesFromGist() {
   }
 
   if (!res.ok) {
-    throw new Error(`Failed to fetch Gist ${gistId}: HTTP ${res.status} ${res.statusText}`);
+    throw new Error(`Failed to fetch configured Gist: HTTP ${res.status} ${res.statusText}`);
   }
 
   const data = await res.json();
@@ -163,7 +168,10 @@ async function loadCandidatesFromGist() {
   if (!contentText) return [];
 
   const parsed = JSON.parse(contentText);
-  return Object.values(parsed?.extensions || {});
+  const ignoredSet = new Set(Array.isArray(parsed?.ignoredKeys) ? parsed.ignoredKeys : []);
+  return Object.values(parsed?.extensions || {}).filter(
+    (ext) => ext && !ext.ignored && !ignoredSet.has(ext.key)
+  );
 }
 
 /**

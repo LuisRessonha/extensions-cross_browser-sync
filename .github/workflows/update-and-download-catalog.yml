@@ -38,7 +38,7 @@ jobs:
 
       - name: 2. Update KNOWN_EXTENSIONS_CATALOG with gist content
         env:
-          GIST_ID: ${{ inputs.gist_id || vars.GIST_ID }}
+          GIST_ID: ${{ inputs.gist_id || secrets.GIST_ID || vars.GIST_ID }}
           GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
         run: node scripts/update-catalog.mjs
 
