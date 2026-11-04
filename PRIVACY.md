@@ -33,7 +33,6 @@ To perform its synchronization functionality, the Extension processes the follow
 * `management`: Required to detect installed extensions, read their enabled/disabled states, and toggle states during synchronization.
 * `storage`: Required to save user preferences, Gist IDs, and access tokens locally on the device.
 * `alarms`: Required to trigger periodic background synchronization according to user preferences.
-* `tabs`: Required to open extension store pages and settings dashboards in browser tabs.
 * Host Permissions (`api.github.com`, `gist.githubusercontent.com`, `raw.githubusercontent.com`, `github.com`, `addons.mozilla.org`, `chromewebstore.google.com`): Required exclusively to interact with GitHub APIs for Gist synchronization and query public extension store listings for ID matching.
 
 ## 6. Open Source Verification

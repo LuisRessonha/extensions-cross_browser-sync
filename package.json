@@ -1,6 +1,6 @@
 {
   "name": "extensions-cross_browser-sync",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Cross-browser WebExtension to sync installed extensions and their enabled/disabled state across Chromium browsers (Chrome, Edge, Brave, Vivaldi, Opera) and Firefox via GitHub Gist.",
   "type": "module",
   "scripts": {
