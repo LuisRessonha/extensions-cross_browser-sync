@@ -146,6 +146,9 @@ export function computeSyncComparison({
   const normalizedRemote = normalizeSyncPayload(remotePayload);
   const remoteMap = { ...normalizedRemote.extensions };
   const matchedRemoteKeys = new Set();
+  const effectiveIgnoredKeys = Array.from(
+    new Set([...(settings.ignoredKeys || []), ...(normalizedRemote.ignoredKeys || [])])
+  );
 
   const items = [];
   const counts = {
@@ -172,7 +175,9 @@ export function computeSyncComparison({
       settings.customMappings
     );
     const key = remoteMatch?.key || resolveCanonicalKey(localExt, settings.customMappings);
-    const ignored = isExtensionIgnored(localExt, key, settings.ignoredKeys);
+    const ignored =
+      Boolean(remoteMatch?.ignored) ||
+      isExtensionIgnored(localExt, key, effectiveIgnoredKeys);
 
     if (remoteMatch) {
       matchedRemoteKeys.add(remoteMatch.key);
@@ -314,7 +319,9 @@ export function computeSyncComparison({
       storeUrls: mergedStoreUrls
     };
 
-    const ignored = isExtensionIgnored(mergedRecord, remKey, settings.ignoredKeys);
+    const ignored =
+      Boolean(remRecord?.ignored) ||
+      isExtensionIgnored(mergedRecord, remKey, effectiveIgnoredKeys);
     const storeInfo = getStoreInstallInfo(mergedRecord, browserEnv.family, browserEnv.brand);
 
     if (ignored) {
@@ -409,6 +416,15 @@ export function planSyncExecution({
   const updatedTimestamps = { ...(localMeta?.updatedAtByKey || {}) };
   let remoteChanged = false;
 
+  const effectiveIgnoredKeys =
+    mode === 'push'
+      ? Array.from(new Set(settings.ignoredKeys || []))
+      : mode === 'pull'
+      ? Array.from(new Set(normalizedRemote.ignoredKeys || []))
+      : Array.from(
+          new Set([...(normalizedRemote.ignoredKeys || []), ...(settings.ignoredKeys || [])])
+        );
+
   for (const localExt of localExtensions) {
     if (localExt.installType === 'development' && !settings.includeDevelopmentExtensions) {
       continue;
@@ -429,10 +445,6 @@ export function planSyncExecution({
       matchedRemoteKeys.add(remoteMatch.key);
     }
 
-    if (isExtensionIgnored(localExt, key, settings.ignoredKeys)) {
-      continue;
-    }
-
     const baseRecord = buildSyncRecordFromLocal(
       localExt,
       remoteMatch,
@@ -440,6 +452,30 @@ export function planSyncExecution({
       settings,
       localMeta
     );
+
+    const isIgnored =
+      (mode === 'pull' && Boolean(remoteMatch?.ignored)) ||
+      isExtensionIgnored(localExt, key, effectiveIgnoredKeys);
+
+    if (isIgnored) {
+      // Keep ignored extensions tracked in Gist with `ignored: true`, but exclude from active sync actions
+      const ignoredRecord = {
+        ...(remoteMatch || {}),
+        ...baseRecord,
+        ignored: true,
+        updatedAt: remoteMatch?.updatedAt || baseRecord.updatedAt
+      };
+      nextExtensions[key] = ignoredRecord;
+      if (!remoteMatch || !remoteMatch.ignored) {
+        remoteChanged = true;
+      }
+      continue;
+    }
+
+    baseRecord.ignored = false;
+    if (remoteMatch?.ignored) {
+      remoteChanged = true;
+    }
 
     if (!remoteMatch) {
       // Extension only exists locally
@@ -540,14 +576,40 @@ export function planSyncExecution({
   const missingExtensions = [];
   for (const [remKey, remRecord] of Object.entries(existingRemoteExtensions)) {
     if (matchedRemoteKeys.has(remKey)) continue;
-    if (isExtensionIgnored(remRecord, remKey, settings.ignoredKeys)) continue;
+
+    const isIgnored =
+      (mode !== 'push' && Boolean(remRecord?.ignored)) ||
+      isExtensionIgnored(remRecord, remKey, effectiveIgnoredKeys);
+
+    if (Boolean(remRecord.ignored) !== isIgnored) {
+      remoteChanged = true;
+    }
 
     // Even in 'push' mode, we preserve extensions installed on other browsers unless replaceRemote is explicitly requested
-    nextExtensions[remKey] = remRecord;
+    nextExtensions[remKey] = {
+      ...remRecord,
+      ignored: isIgnored
+    };
+
+    if (isIgnored) continue;
+
     missingExtensions.push({
       ...remRecord,
       storeInfo: getStoreInstallInfo(remRecord, browserEnv.family, browserEnv.brand)
     });
+  }
+
+  const finalIgnoredSet = new Set(effectiveIgnoredKeys);
+  for (const [k, rec] of Object.entries(nextExtensions)) {
+    if (rec?.ignored) {
+      finalIgnoredSet.add(k);
+    } else {
+      finalIgnoredSet.delete(k);
+    }
+  }
+  const finalIgnoredKeys = Array.from(finalIgnoredSet);
+  if (JSON.stringify(normalizedRemote.ignoredKeys || []) !== JSON.stringify(finalIgnoredKeys)) {
+    remoteChanged = true;
   }
 
   const nextPayload = {
@@ -562,6 +624,7 @@ export function planSyncExecution({
           family: browserEnv.family
         }
       : normalizedRemote.updatedBy,
+    ignoredKeys: finalIgnoredKeys,
     extensions: nextExtensions
   };
 
@@ -785,8 +848,11 @@ export async function performSync(options = {}) {
       await updateSyncGist(settings.githubToken, settings.gistId, finalPayload);
     }
 
-    // 6. Persist cache, timestamps, and sync log
+    // 6. Persist cache, synced ignoredKeys, timestamps, and sync log
     await saveRemoteCache(finalPayload);
+    if (Array.isArray(finalPayload.ignoredKeys)) {
+      await saveSettings({ ignoredKeys: finalPayload.ignoredKeys });
+    }
     const summary = {
       mode,
       totalSynced: Object.keys(finalPayload.extensions).length,
@@ -1053,6 +1119,7 @@ export async function removeExtensionFromGist({ key, name }) {
 
   const nextExtensions = { ...(payload.extensions || {}) };
   delete nextExtensions[key];
+  const nextIgnoredKeys = (payload.ignoredKeys || []).filter((k) => k !== key);
 
   const updatedPayload = {
     ...payload,
@@ -1063,6 +1130,7 @@ export async function removeExtensionFromGist({ key, name }) {
       browser: browserEnv.brand,
       family: browserEnv.family
     },
+    ignoredKeys: nextIgnoredKeys,
     extensions: nextExtensions
   };
 
@@ -1078,6 +1146,88 @@ export async function removeExtensionFromGist({ key, name }) {
   });
 
   return { ok: true, payload: updatedPayload };
+}
+
+/**
+ * Toggles the ignored status of an extension key locally and updates the Gist & remote cache
+ * so ignored extensions are tracked across browsers in the Gist.
+ *
+ * @param {string} key
+ */
+export async function toggleIgnoreKeyAndSync(key) {
+  if (!key) throw new Error('Extension key is required.');
+
+  const settings = await getSettings();
+  const localMeta = await getLocalMeta();
+  const browserEnv = detectBrowserEnvironment();
+  const localExtensions = await getInstalledExtensions();
+  const cached = (await getRemoteCache()) || createEmptySyncPayload();
+
+  const ignoredSet = new Set([
+    ...(settings.ignoredKeys || []),
+    ...(cached.ignoredKeys || [])
+  ]);
+
+  const isNowIgnored = !ignoredSet.has(key);
+  if (isNowIgnored) {
+    ignoredSet.add(key);
+  } else {
+    ignoredSet.delete(key);
+  }
+
+  const nextIgnoredKeys = Array.from(ignoredSet);
+  const updatedSettings = await saveSettings({ ignoredKeys: nextIgnoredKeys });
+
+  const nextExtensions = { ...(cached.extensions || {}) };
+  if (nextExtensions[key]) {
+    nextExtensions[key] = {
+      ...nextExtensions[key],
+      ignored: isNowIgnored,
+      updatedAt: new Date().toISOString()
+    };
+  } else {
+    const localMatch = localExtensions.find(
+      (extItem) => resolveCanonicalKey(extItem, updatedSettings.customMappings) === key
+    );
+    if (localMatch) {
+      const rec = buildSyncRecordFromLocal(
+        localMatch,
+        null,
+        browserEnv,
+        updatedSettings,
+        localMeta
+      );
+      rec.ignored = isNowIgnored;
+      nextExtensions[key] = rec;
+    }
+  }
+
+  const nextPayload = {
+    ...normalizeSyncPayload(cached),
+    updatedAt: new Date().toISOString(),
+    updatedBy: {
+      deviceId: updatedSettings.deviceId,
+      deviceName: updatedSettings.deviceName || browserEnv.label,
+      browser: browserEnv.brand,
+      family: browserEnv.family
+    },
+    ignoredKeys: nextIgnoredKeys,
+    extensions: nextExtensions
+  };
+
+  await saveRemoteCache(nextPayload);
+
+  const token = (updatedSettings.githubToken || '').trim();
+  const gistId = (updatedSettings.gistId || '').trim();
+  if (token && gistId) {
+    try {
+      await updateSyncGist(token, gistId, nextPayload);
+    } catch (err) {
+      console.warn('Failed to push ignored state to Gist:', err);
+    }
+  }
+
+  return nextPayload;
 }
 
 

@@ -226,6 +226,7 @@ export function createEmptySyncPayload() {
     schemaVersion: 1,
     updatedAt: new Date().toISOString(),
     updatedBy: null,
+    ignoredKeys: [],
     extensions: {}
   };
 }
@@ -237,12 +238,20 @@ export function normalizeSyncPayload(raw) {
   if (!raw || typeof raw !== 'object') {
     return createEmptySyncPayload();
   }
+  const extensions = raw.extensions && typeof raw.extensions === 'object' ? raw.extensions : {};
+  const ignoredSet = new Set(Array.isArray(raw.ignoredKeys) ? raw.ignoredKeys.filter(Boolean) : []);
+  for (const [k, rec] of Object.entries(extensions)) {
+    if (rec?.ignored) {
+      ignoredSet.add(rec.key || k);
+    }
+  }
   return {
     app: 'extensions-cross_browser-sync',
     schemaVersion: 1,
     updatedAt: raw.updatedAt || new Date().toISOString(),
     updatedBy: raw.updatedBy || null,
-    extensions: raw.extensions && typeof raw.extensions === 'object' ? raw.extensions : {}
+    ignoredKeys: Array.from(ignoredSet),
+    extensions
   };
 }
 

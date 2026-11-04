@@ -30,7 +30,8 @@ import {
   isCurrentlyApplyingRemoteState,
   performSync,
   removeExtensionFromGist,
-  saveManualBrowserIds
+  saveManualBrowserIds,
+  toggleIgnoreKeyAndSync
 } from '../shared/sync-engine.js';
 
 const ALARM_PERIODIC_SYNC = 'ecbs-periodic-sync';
@@ -321,15 +322,7 @@ ext?.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
         }
 
         case 'TOGGLE_IGNORE_KEY': {
-          const { key } = message;
-          const settings = await getSettings();
-          const ignored = new Set(settings.ignoredKeys || []);
-          if (ignored.has(key)) {
-            ignored.delete(key);
-          } else {
-            ignored.add(key);
-          }
-          await saveSettings({ ignoredKeys: Array.from(ignored) });
+          await toggleIgnoreKeyAndSync(message.key);
           const state = await getDashboardState({ refreshRemote: false });
           await refreshBadge();
           sendResponse({ ok: true, data: state });
