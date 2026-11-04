@@ -3,6 +3,8 @@ import { ext } from '../shared/browser-polyfill.js';
 let currentState = null;
 let activeTab = 'all';
 let searchQuery = '';
+let availableXpiByKey = {};
+let xpiCheckPromise = null;
 
 const els = {
   browserBadge: document.getElementById('browser-badge'),
@@ -107,6 +109,34 @@ function filterItems(items) {
     }
     return true;
   });
+}
+
+async function refreshXpiAvailability() {
+  if (currentState?.browserEnv?.family !== 'firefox') {
+    availableXpiByKey = {};
+    return;
+  }
+  const missingItems = (currentState?.comparison?.items || []).filter(
+    (i) => i.status === 'missing'
+  );
+  if (missingItems.length === 0) {
+    availableXpiByKey = {};
+    return;
+  }
+  const promise = (async () => {
+    try {
+      const res = await sendMessage({
+        type: 'CHECK_REPO_XPI_AVAILABILITY',
+        items: missingItems
+      });
+      availableXpiByKey = res?.availableByKey || {};
+      renderDashboard();
+    } catch {
+      availableXpiByKey = {};
+    }
+  })();
+  xpiCheckPromise = promise;
+  await promise;
 }
 
 function renderDashboard() {
@@ -275,35 +305,45 @@ function renderDashboard() {
         }
       });
 
-      const fileInstallOpt = document.createElement('button');
-      fileInstallOpt.type = 'button';
-      fileInstallOpt.className = 'install-dropdown-item';
-      fileInstallOpt.title =
-        'Install this extension from its .xpi package in your configured Git repository (xpi-files/)';
-      const fileTitle = document.createElement('strong');
-      fileTitle.textContent = 'Auto Install from File';
-      const fileSub = document.createElement('span');
-      fileSub.textContent = 'From Git repo xpi-files/';
-      fileInstallOpt.append(fileTitle, fileSub);
+      menu.appendChild(autoInstallOpt);
 
-      fileInstallOpt.addEventListener('click', async (e) => {
+      const isFirefox = currentState?.browserEnv?.family === 'firefox';
+      if (isFirefox && availableXpiByKey[item.key]) {
+        const fileInstallOpt = document.createElement('button');
+        fileInstallOpt.type = 'button';
+        fileInstallOpt.className = 'install-dropdown-item';
+        fileInstallOpt.title =
+          'Install this extension from its .xpi package in your configured Git repository (xpi-files/)';
+        const fileTitle = document.createElement('strong');
+        fileTitle.textContent = 'Auto Install from File';
+        const fileSub = document.createElement('span');
+        fileSub.textContent = 'From Git repo xpi-files/';
+        fileInstallOpt.append(fileTitle, fileSub);
+
+        fileInstallOpt.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          menu.classList.add('hidden');
+          try {
+            installTriggerBtn.disabled = true;
+            await sendMessage({
+              type: 'AUTO_INSTALL_FROM_FILE',
+              item
+            });
+          } catch (err) {
+            showToast(err.message, true);
+          } finally {
+            installTriggerBtn.disabled = false;
+          }
+        });
+
+        menu.appendChild(fileInstallOpt);
+      }
+
+      installTriggerBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        menu.classList.add('hidden');
-        try {
-          installTriggerBtn.disabled = true;
-          await sendMessage({
-            type: 'AUTO_INSTALL_FROM_FILE',
-            item
-          });
-        } catch (err) {
-          showToast(err.message, true);
-        } finally {
-          installTriggerBtn.disabled = false;
+        if (isFirefox && xpiCheckPromise) {
+          await xpiCheckPromise;
         }
-      });
-
-      installTriggerBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
         const wasHidden = menu.classList.contains('hidden');
         for (const openMenu of document.querySelectorAll('.install-dropdown-menu')) {
           openMenu.classList.add('hidden');
@@ -319,7 +359,6 @@ function renderDashboard() {
         }
       });
 
-      menu.append(autoInstallOpt, fileInstallOpt);
       dropdownWrap.append(installTriggerBtn, menu);
       actions.appendChild(dropdownWrap);
     } else if (item.localId) {
@@ -400,6 +439,7 @@ async function runSync(mode) {
     const res = await sendMessage({ type: 'PERFORM_SYNC', mode });
     currentState = res.data;
     renderDashboard();
+    refreshXpiAvailability();
 
     const s = res.result?.summary;
     if (s) {
@@ -483,6 +523,7 @@ els.installAllMissingBtn.addEventListener('click', async () => {
     const res = await sendMessage({ type: 'GET_DASHBOARD_STATE', refreshRemote: false });
     currentState = res.data;
     renderDashboard();
+    refreshXpiAvailability();
   } catch (err) {
     showToast(err.message, true);
   }

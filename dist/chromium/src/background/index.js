@@ -5,6 +5,7 @@ import {
   uninstallExtension
 } from '../shared/browser-polyfill.js';
 import {
+  checkRepoXpiAvailabilityForItems,
   normalizeExtensionName,
   resolveCanonicalKey,
   resolveDirectInstallTarget,
@@ -72,6 +73,10 @@ async function triggerAutoInstallItem(item, active = true) {
 }
 
 async function triggerAutoInstallFromFileItem(item, active = true) {
+  const browserEnv = detectBrowserEnvironment();
+  if (browserEnv.family !== 'firefox') {
+    throw new Error('Auto Install from File (.xpi) is only available on Firefox.');
+  }
   const settings = await getSettings();
   const target = await resolveRepoXpiInstallTarget(item, settings);
 
@@ -417,6 +422,21 @@ ext?.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
           const changed = await enrichDashboardItemsIds(message.items || []);
           const state = changed ? await getDashboardState({ refreshRemote: false }) : null;
           sendResponse({ ok: true, changed, data: state });
+          break;
+        }
+
+        case 'CHECK_REPO_XPI_AVAILABILITY': {
+          const browserEnv = detectBrowserEnvironment();
+          if (browserEnv.family !== 'firefox') {
+            sendResponse({ ok: true, availableByKey: {} });
+            break;
+          }
+          const settings = await getSettings();
+          const availableByKey = await checkRepoXpiAvailabilityForItems(
+            message.items || [],
+            settings
+          );
+          sendResponse({ ok: true, availableByKey });
           break;
         }
 

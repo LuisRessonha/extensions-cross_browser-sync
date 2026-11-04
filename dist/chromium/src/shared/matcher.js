@@ -769,6 +769,33 @@ export function parseGitRepoUrl(rawRepoUrl, explicitBranch = '') {
 }
 
 /**
+ * Returns the expected relative `xpi-files/<key>.xpi` path in the repository for an extension record.
+ *
+ * @param {object} record
+ * @returns {string}
+ */
+export function getExpectedXpiFilePath(record) {
+  const catalogEntry = findCatalogEntry({
+    key: record?.key,
+    name: record?.name,
+    id: record?.localId || record?.ids?.chromium || record?.ids?.firefox || record?.ids?.edge
+  });
+
+  const safeKey = String(record?.key || catalogEntry?.key || resolveCanonicalKey(record || {}))
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  const rawXpiPath = (catalogEntry?.xpiFile || record?.xpiFile || `xpi-files/${safeKey}.xpi`).replace(
+    /^\/+/,
+    ''
+  );
+  return rawXpiPath.startsWith('xpi-files/')
+    ? rawXpiPath
+    : `xpi-files/${rawXpiPath.replace(/^xpi-files\/+/i, '')}`;
+}
+
+/**
  * Resolves the direct `.xpi` download URL from the configured Git repository's `xpi-files/` folder.
  * Requires a defined Git repository in settings (URL or Access Token).
  *
@@ -824,24 +851,7 @@ export async function resolveRepoXpiInstallTarget(record, settings = {}) {
   }
 
   const { owner, repo, branch } = parsedRepo;
-  const catalogEntry = findCatalogEntry({
-    key: record?.key,
-    name: record?.name,
-    id: record?.localId || record?.ids?.chromium || record?.ids?.firefox || record?.ids?.edge
-  });
-
-  const safeKey = String(record?.key || catalogEntry?.key || resolveCanonicalKey(record || {}))
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-
-  const rawXpiPath = (catalogEntry?.xpiFile || record?.xpiFile || `xpi-files/${safeKey}.xpi`).replace(
-    /^\/+/,
-    ''
-  );
-  const xpiFilePath = rawXpiPath.startsWith('xpi-files/')
-    ? rawXpiPath
-    : `xpi-files/${rawXpiPath.replace(/^xpi-files\/+/i, '')}`;
+  const xpiFilePath = getExpectedXpiFilePath(record);
 
   const encodedPath = xpiFilePath
     .split('/')
@@ -888,6 +898,121 @@ export async function resolveRepoXpiInstallTarget(record, settings = {}) {
   throw new Error(
     `XPI file "${xpiFilePath}" was not found in repository ${owner}/${repo}.`
   );
+}
+
+/**
+ * Checks which extension items have an available and accessible `.xpi` file in the configured
+ * Git repository's `xpi-files/` folder.
+ *
+ * @param {Array<object>} items
+ * @param {object} settings
+ * @returns {Promise<Record<string, { installUrl: string, xpiFile: string, repo: string, isDirectPackage: boolean }>>}
+ */
+export async function checkRepoXpiAvailabilityForItems(items = [], settings = {}) {
+  if (!Array.isArray(items) || items.length === 0) return {};
+
+  const repoUrlInput = (settings.gitRepoUrl || '').trim();
+  const token = (settings.gitRepoToken || settings.githubToken || '').trim();
+  const branchInput = (settings.gitRepoBranch || '').trim();
+
+  if (!repoUrlInput && !token) {
+    return {};
+  }
+
+  const baseHeaders = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
+  const authHeaders = token
+    ? { ...baseHeaders, Authorization: `Bearer ${token}` }
+    : baseHeaders;
+
+  let parsedRepo = parseGitRepoUrl(repoUrlInput, branchInput);
+  if (!parsedRepo) {
+    if (repoUrlInput) return {};
+    try {
+      const userRes = await fetch('https://api.github.com/user', {
+        headers: authHeaders
+      });
+      if (!userRes.ok) return {};
+      const userData = await userRes.json();
+      if (!userData?.login) return {};
+      parsedRepo = {
+        owner: userData.login,
+        repo: 'extensions-cross_browser-sync',
+        branch: branchInput
+      };
+    } catch {
+      return {};
+    }
+  }
+
+  const { owner, repo, branch } = parsedRepo;
+  const availableByKey = {};
+
+  // 1. Try listing `xpi-files/` in a single GitHub Contents API request
+  const refQuery = branch ? `?ref=${encodeURIComponent(branch)}` : '';
+  const dirUrl = `https://api.github.com/repos/${encodeURIComponent(
+    owner
+  )}/${encodeURIComponent(repo)}/contents/xpi-files${refQuery}`;
+
+  try {
+    let dirRes = await fetch(dirUrl, { headers: authHeaders });
+    if ((dirRes.status === 401 || dirRes.status === 403) && token) {
+      dirRes = await fetch(dirUrl, { headers: baseHeaders });
+    }
+    if (dirRes.ok) {
+      const dirEntries = await dirRes.json();
+      if (Array.isArray(dirEntries)) {
+        const fileMap = new Map();
+        for (const entry of dirEntries) {
+          if (entry?.type === 'file' && entry.path && entry.download_url) {
+            fileMap.set(entry.path.toLowerCase(), entry.download_url);
+          }
+        }
+        for (const item of items) {
+          if (!item?.key) continue;
+          const expectedPath = getExpectedXpiFilePath(item);
+          const downloadUrl = fileMap.get(expectedPath.toLowerCase());
+          if (downloadUrl) {
+            availableByKey[item.key] = {
+              installUrl: downloadUrl,
+              xpiFile: expectedPath,
+              repo: `${owner}/${repo}`,
+              isDirectPackage: true
+            };
+          }
+        }
+        return availableByKey;
+      }
+    } else if (dirRes.status === 404) {
+      return {};
+    }
+  } catch {
+    // Fall back to per-item verification below
+  }
+
+  // 2. Fallback: verify each item directly (e.g. via raw.githubusercontent.com HEAD or Contents API)
+  const resolvedSettings = {
+    ...settings,
+    gitRepoUrl: `${owner}/${repo}`,
+    gitRepoBranch: branch
+  };
+  await Promise.all(
+    items.map(async (item) => {
+      if (!item?.key) return;
+      try {
+        const target = await resolveRepoXpiInstallTarget(item, resolvedSettings);
+        if (target?.installUrl) {
+          availableByKey[item.key] = target;
+        }
+      } catch {
+        // Not available or not accessible
+      }
+    })
+  );
+
+  return availableByKey;
 }
 
 

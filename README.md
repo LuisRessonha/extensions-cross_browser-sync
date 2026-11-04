@@ -29,7 +29,7 @@ Missing extensions display an **`Install ▾`** dropdown in both the **Popup** a
   - **Chromium**: Opens the direct Chrome Web Store or Microsoft Edge Add-ons detail page.
   - **Post-Install State Sync**: Listens to `management.onInstalled` and automatically enables or disables the newly installed extension to match its Gist state.
 - **Auto Install from File (`xpi-files/`)**:
-  - Fetches and installs `.xpi` packages directly from the `xpi-files/<key>.xpi` folder of your configured GitHub repository (supports both public and private repositories via GitHub API / raw URLs).
+  - Displayed **only on Firefox** and **only when the extension's `.xpi` file is available and accessible** in the `xpi-files/<key>.xpi` folder of your configured GitHub repository (supports both public and private repositories via GitHub API / raw URLs).
 - **Auto-Install All Missing**: Batch action in the toolbar to trigger installation for all missing extensions at once.
 
 ### 4. Dashboard & Compact Popup UI

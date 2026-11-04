@@ -3,9 +3,11 @@ import assert from 'node:assert/strict';
 
 import {
   buildCatalogEntry,
+  checkRepoXpiAvailabilityForItems,
   findCatalogEntry,
   findMatchingRemoteRecord,
   formatCatalogEntrySnippet,
+  getExpectedXpiFilePath,
   getStoreInstallInfo,
   normalizeExtensionName,
   parseAndResolveManualBrowserId,
@@ -304,6 +306,18 @@ test('parseGitRepoUrl and resolveRepoXpiInstallTarget validate git repo settings
     () => resolveRepoXpiInstallTarget({ key: 'ublock-origin', name: 'uBlock Origin' }, {}),
     /Git repository not configured/
   );
+
+  assert.equal(
+    getExpectedXpiFilePath({ key: 'bitwarden', name: 'Bitwarden Password Manager' }),
+    'xpi-files/bitwarden.xpi'
+  );
+
+  // Without repo URL or token, checkRepoXpiAvailabilityForItems returns empty object
+  const emptyAvail = await checkRepoXpiAvailabilityForItems(
+    [{ key: 'bitwarden', name: 'Bitwarden Password Manager' }],
+    {}
+  );
+  assert.deepEqual(emptyAvail, {});
 });
 
 test('planSyncExecution and computeSyncComparison track ignored extensions in Gist payload across browsers', () => {
