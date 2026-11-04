@@ -291,6 +291,98 @@
         </div>
       </div>
     </div>
+
+    <!-- Match Equivalent Alternative Modal -->
+    <div id="match-alternative-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="match-alternative-modal-title">
+      <div class="modal-dialog" style="max-width: 580px;">
+        <div class="modal-header">
+          <h2 id="match-alternative-modal-title">Match Equivalent Alternative</h2>
+          <button type="button" id="close-alternative-modal-btn" class="modal-close-btn" aria-label="Close" title="Close equivalent alternative window">✕</button>
+        </div>
+        <div class="modal-body">
+          <p id="alt-modal-desc" class="card-desc" style="margin-bottom: 4px;">
+            When an extension is unavailable on both Chrome and Firefox stores, match it with an equivalent alternative extension on the other browser and flag the pair as an <strong>Equivalent Alternative</strong>.
+          </p>
+
+          <section class="card" style="padding: 14px;">
+            <div class="form-group">
+              <label for="alt-target-family">
+                <span>Target Browser Store to Match</span>
+              </label>
+              <select id="alt-target-family" title="Select which browser store needs an equivalent alternative">
+                <option value="firefox">Firefox Add-ons (AMO)</option>
+                <option value="chromium">Chrome Web Store (Chromium)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="alt-existing-select">
+                <span>Option 1: Match with an existing extension in your list (Optional)</span>
+              </label>
+              <select id="alt-existing-select" title="Pick another extension from your local or Gist list to pair as an equivalent alternative">
+                <option value="">— Select an existing extension to pair &amp; merge —</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="alt-store-search-input">
+                <span>Option 2: Search store for an equivalent alternative</span>
+              </label>
+              <div class="input-row">
+                <input
+                  type="text"
+                  id="alt-store-search-input"
+                  placeholder="Search by keyword or extension name..."
+                  autocomplete="off"
+                />
+                <button type="button" id="alt-store-search-btn" class="btn btn-secondary btn-sm" title="Search the selected browser store for candidate alternative extensions">
+                  Search Store
+                </button>
+              </div>
+              <div id="alt-store-results" class="alt-search-results hidden"></div>
+            </div>
+
+            <div class="form-group">
+              <label for="alt-id-input">
+                <span>Equivalent Extension Store URL or ID</span>
+              </label>
+              <input
+                type="text"
+                id="alt-id-input"
+                placeholder="Paste store URL or extension ID / GUID..."
+                autocomplete="off"
+              />
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="alt-name-input">
+                <span>Equivalent Alternative Name (shown in badge &amp; tooltip)</span>
+              </label>
+              <input
+                type="text"
+                id="alt-name-input"
+                placeholder="e.g. Simple Tab Groups"
+                autocomplete="off"
+              />
+            </div>
+          </section>
+
+          <div class="button-row" style="justify-content: space-between;">
+            <button type="button" id="clear-alternative-btn" class="btn btn-danger btn-sm hidden" title="Remove the Equivalent Alternative flag from this extension">
+              Unflag Equivalent Alternative
+            </button>
+            <div class="button-row" style="margin-left: auto;">
+              <button type="button" id="cancel-alternative-btn" class="btn btn-secondary btn-sm" title="Cancel and close window">
+                Cancel
+              </button>
+              <button type="button" id="save-alternative-btn" class="btn btn-primary btn-sm" title="Save this counterpart browser ID/URL and flag the pair as an Equivalent Alternative">
+                Save &amp; Flag as Equivalent Alternative
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="options.js"></script>

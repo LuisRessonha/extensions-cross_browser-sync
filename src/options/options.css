@@ -707,3 +707,85 @@ select:focus {
   font-weight: 400;
 }
 
+/* Equivalent Alternative Badge & Modal */
+.alt-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: rgba(168, 85, 247, 0.18);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  width: fit-content;
+  margin-top: 3px;
+}
+
+.btn-alt-match {
+  background: rgba(168, 85, 247, 0.14);
+  color: #d8b4fe;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  padding: 3px 8px;
+  font-size: 11px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  align-self: flex-start;
+}
+
+.btn-alt-match:hover:not(:disabled) {
+  background: rgba(168, 85, 247, 0.26);
+  color: #f3e8ff;
+}
+
+.alt-search-results {
+  margin-top: 8px;
+  max-height: 175px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-input);
+  display: flex;
+  flex-direction: column;
+}
+
+.alt-search-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+  font-size: 12px;
+}
+
+.alt-search-item:last-child {
+  border-bottom: none;
+}
+
+.alt-search-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.alt-search-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.alt-search-sub {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  font-family: monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+

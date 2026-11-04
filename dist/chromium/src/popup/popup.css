@@ -445,6 +445,13 @@ body {
   color: var(--text-secondary);
 }
 
+.store-tag-alt {
+  background-color: rgba(168, 85, 247, 0.2);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  font-weight: 600;
+}
+
 .ext-actions {
   display: flex;
   align-items: center;

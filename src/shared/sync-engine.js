@@ -100,6 +100,17 @@ export function buildSyncRecordFromLocal(localExt, existingRemote, browserEnv, s
   const localTouch = localMeta?.updatedAtByKey?.[key];
   const updatedAt = localTouch || existingRemote?.updatedAt || new Date().toISOString();
 
+  const equivalentAlternative = Boolean(
+    customIds?.equivalentAlternative ??
+      existingRemote?.equivalentAlternative ??
+      catalog?.equivalentAlternative
+  );
+  const alternativeName =
+    customIds?.alternativeName ||
+    existingRemote?.alternativeName ||
+    catalog?.alternativeName ||
+    '';
+
   return {
     key,
     name: localExt.name || existingRemote?.name || key,
@@ -109,7 +120,9 @@ export function buildSyncRecordFromLocal(localExt, existingRemote, browserEnv, s
     updatedAt,
     lastSeenVersion: localExt.version || existingRemote?.lastSeenVersion || '',
     ids,
-    storeUrls
+    storeUrls,
+    ...(equivalentAlternative ? { equivalentAlternative: true } : {}),
+    ...(alternativeName ? { alternativeName } : {})
   };
 }
 
@@ -210,6 +223,8 @@ export function computeSyncComparison({
         ids: enrichedRecord.ids,
         storeUrls: enrichedRecord.storeUrls,
         storeInfo,
+        equivalentAlternative: Boolean(enrichedRecord.equivalentAlternative),
+        alternativeName: enrichedRecord.alternativeName || '',
         updatedAt: enrichedRecord.updatedAt
       });
       continue;
@@ -240,6 +255,8 @@ export function computeSyncComparison({
         ids: enrichedRecord.ids,
         storeUrls: enrichedRecord.storeUrls,
         storeInfo,
+        equivalentAlternative: Boolean(enrichedRecord.equivalentAlternative),
+        alternativeName: enrichedRecord.alternativeName || '',
         updatedAt: remoteMatch.updatedAt || enrichedRecord.updatedAt
       });
     } else {
@@ -260,6 +277,8 @@ export function computeSyncComparison({
         ids: enrichedRecord.ids,
         storeUrls: enrichedRecord.storeUrls,
         storeInfo,
+        equivalentAlternative: Boolean(enrichedRecord.equivalentAlternative),
+        alternativeName: enrichedRecord.alternativeName || '',
         updatedAt: enrichedRecord.updatedAt
       });
     }
@@ -313,10 +332,23 @@ export function computeSyncComparison({
       mergedStoreUrls.edge = `https://microsoftedge.microsoft.com/addons/detail/${mergedIds.edge}`;
     }
 
+    const equivalentAlternative = Boolean(
+      customIds?.equivalentAlternative ??
+        remRecord?.equivalentAlternative ??
+        catalog?.equivalentAlternative
+    );
+    const alternativeName =
+      customIds?.alternativeName ||
+      remRecord?.alternativeName ||
+      catalog?.alternativeName ||
+      '';
+
     const mergedRecord = {
       ...remRecord,
       ids: mergedIds,
-      storeUrls: mergedStoreUrls
+      storeUrls: mergedStoreUrls,
+      ...(equivalentAlternative ? { equivalentAlternative: true } : {}),
+      ...(alternativeName ? { alternativeName } : {})
     };
 
     const ignored =
@@ -342,6 +374,8 @@ export function computeSyncComparison({
         ids: mergedIds,
         storeUrls: mergedStoreUrls,
         storeInfo,
+        equivalentAlternative,
+        alternativeName,
         updatedAt: remRecord.updatedAt || null
       });
       continue;
@@ -364,6 +398,8 @@ export function computeSyncComparison({
       ids: mergedIds,
       storeUrls: mergedStoreUrls,
       storeInfo,
+      equivalentAlternative,
+      alternativeName,
       updatedAt: remRecord.updatedAt || null
     });
   }
@@ -663,6 +699,12 @@ export async function enrichMissingBrowserIds(extensionsMap, settings) {
       if (custom.firefox) rec.ids.firefox = custom.firefox;
       if (custom.chromiumUrl) rec.storeUrls.chromium = custom.chromiumUrl;
       if (custom.firefoxUrl) rec.storeUrls.firefox = custom.firefoxUrl;
+      if (custom.equivalentAlternative) {
+        rec.equivalentAlternative = true;
+      }
+      if (custom.alternativeName) {
+        rec.alternativeName = custom.alternativeName;
+      }
     }
 
     // 2. Check static catalog
@@ -721,9 +763,15 @@ export async function enrichMissingBrowserIds(extensionsMap, settings) {
  * Saves manual Browser ID overrides (`chromium` and/or `firefox`) for a canonical extension key,
  * resolving store URLs if pasted, and updates the cached remote payload.
  *
- * @param {{ key: string, chromiumInput?: string, firefoxInput?: string }} params
+ * @param {{ key: string, chromiumInput?: string, firefoxInput?: string, equivalentAlternative?: boolean, alternativeName?: string }} params
  */
-export async function saveManualBrowserIds({ key, chromiumInput, firefoxInput }) {
+export async function saveManualBrowserIds({
+  key,
+  chromiumInput,
+  firefoxInput,
+  equivalentAlternative,
+  alternativeName
+}) {
   if (!key) throw new Error('Extension key is required.');
 
   const settings = await getSettings();
@@ -754,6 +802,23 @@ export async function saveManualBrowserIds({ key, chromiumInput, firefoxInput })
     }
   }
 
+  if (typeof equivalentAlternative === 'boolean') {
+    if (equivalentAlternative) {
+      nextEntry.equivalentAlternative = true;
+    } else {
+      delete nextEntry.equivalentAlternative;
+      delete nextEntry.alternativeName;
+    }
+  }
+  if (typeof alternativeName === 'string') {
+    const trimmedAlt = alternativeName.trim();
+    if (trimmedAlt && nextEntry.equivalentAlternative) {
+      nextEntry.alternativeName = trimmedAlt;
+    } else if (!trimmedAlt) {
+      delete nextEntry.alternativeName;
+    }
+  }
+
   customBrowserIds[key] = nextEntry;
   await saveSettings({ customBrowserIds });
 
@@ -772,10 +837,193 @@ export async function saveManualBrowserIds({ key, chromiumInput, firefoxInput })
       rec.ids.firefox = nextEntry.firefox;
       if (nextEntry.firefoxUrl) rec.storeUrls.firefox = nextEntry.firefoxUrl;
     }
+    if (nextEntry.equivalentAlternative) {
+      rec.equivalentAlternative = true;
+      if (nextEntry.alternativeName) {
+        rec.alternativeName = nextEntry.alternativeName;
+      }
+    } else {
+      delete rec.equivalentAlternative;
+      delete rec.alternativeName;
+    }
     await saveRemoteCache(cached);
   }
 
   return nextEntry;
+}
+
+/**
+ * Matches an extension with an equivalent alternative on the counterpart browser store
+ * (or merges it with another extension entry) and flags it as `equivalentAlternative: true`
+ * both locally and in the GitHub Gist.
+ *
+ * @param {{
+ *   key: string,
+ *   targetFamily?: 'chromium' | 'firefox',
+ *   alternativeInput?: string,
+ *   alternativeName?: string,
+ *   mergeSourceKey?: string,
+ *   mergeSourceLocalId?: string,
+ *   clearAlternative?: boolean
+ * }} params
+ */
+export async function saveEquivalentAlternative({
+  key,
+  targetFamily,
+  alternativeInput,
+  alternativeName,
+  mergeSourceKey,
+  mergeSourceLocalId,
+  clearAlternative = false
+}) {
+  if (!key) throw new Error('Extension key is required.');
+
+  const settings = await getSettings();
+  const localMeta = await getLocalMeta();
+  const browserEnv = detectBrowserEnvironment();
+  const localExtensions = await getInstalledExtensions();
+
+  const customBrowserIds = { ...(settings.customBrowserIds || {}) };
+  const customMappings = { ...(settings.customMappings || {}) };
+  const existing = { ...(customBrowserIds[key] || {}) };
+
+  const cached = (await getRemoteCache()) || createEmptySyncPayload();
+  const nextExtensions = { ...(cached.extensions || {}) };
+
+  if (clearAlternative) {
+    delete existing.equivalentAlternative;
+    delete existing.alternativeName;
+    customBrowserIds[key] = existing;
+    await saveSettings({ customBrowserIds });
+
+    if (nextExtensions[key]) {
+      const rec = { ...nextExtensions[key] };
+      delete rec.equivalentAlternative;
+      delete rec.alternativeName;
+      rec.updatedAt = new Date().toISOString();
+      nextExtensions[key] = rec;
+    }
+  } else {
+    const family = targetFamily === 'chromium' ? 'chromium' : 'firefox';
+    const rawInput = (alternativeInput || '').trim();
+    if (!rawInput) {
+      throw new Error(
+        `Please enter or select an equivalent ${
+          family === 'chromium' ? 'Chrome Web Store' : 'Firefox Add-ons'
+        } ID or URL.`
+      );
+    }
+
+    const parsed = await parseAndResolveManualBrowserId(rawInput, family);
+    if (!parsed.id) {
+      throw new Error('Could not resolve a valid extension ID from the provided input.');
+    }
+
+    existing[family] = parsed.id;
+    if (parsed.storeUrl) {
+      existing[`${family}Url`] = parsed.storeUrl;
+    }
+    existing.equivalentAlternative = true;
+    const resolvedAltName = (alternativeName || parsed.name || '').trim();
+    if (resolvedAltName) {
+      existing.alternativeName = resolvedAltName;
+    }
+
+    if (mergeSourceLocalId) {
+      customMappings[mergeSourceLocalId] = key;
+    }
+    // Also map the resolved ID to `key` so when that alternative extension is installed locally it automatically pairs with `key`
+    customMappings[parsed.id] = key;
+
+    customBrowserIds[key] = existing;
+    await saveSettings({ customBrowserIds, customMappings });
+
+    let baseRec = nextExtensions[key];
+    if (!baseRec) {
+      const localMatch = localExtensions.find(
+        (extItem) => resolveCanonicalKey(extItem, customMappings) === key
+      );
+      if (localMatch) {
+        baseRec = buildSyncRecordFromLocal(
+          localMatch,
+          null,
+          browserEnv,
+          { ...settings, customBrowserIds, customMappings },
+          localMeta
+        );
+      } else {
+        baseRec = {
+          key,
+          name: resolvedAltName || key,
+          description: '',
+          homepageUrl: '',
+          enabled: true,
+          updatedAt: new Date().toISOString(),
+          lastSeenVersion: '',
+          ids: {},
+          storeUrls: {}
+        };
+      }
+    }
+
+    const mergedIds = {
+      ...(baseRec.ids || {}),
+      [family]: parsed.id
+    };
+    const mergedStoreUrls = {
+      ...(baseRec.storeUrls || {}),
+      ...(parsed.storeUrl ? { [family]: parsed.storeUrl } : {})
+    };
+
+    if (mergeSourceKey && mergeSourceKey !== key && nextExtensions[mergeSourceKey]) {
+      const srcRec = nextExtensions[mergeSourceKey];
+      if (srcRec.ids?.chromium && !mergedIds.chromium) mergedIds.chromium = srcRec.ids.chromium;
+      if (srcRec.ids?.firefox && !mergedIds.firefox) mergedIds.firefox = srcRec.ids.firefox;
+      if (srcRec.ids?.edge && !mergedIds.edge) mergedIds.edge = srcRec.ids.edge;
+      if (srcRec.storeUrls?.chromium && !mergedStoreUrls.chromium) {
+        mergedStoreUrls.chromium = srcRec.storeUrls.chromium;
+      }
+      if (srcRec.storeUrls?.firefox && !mergedStoreUrls.firefox) {
+        mergedStoreUrls.firefox = srcRec.storeUrls.firefox;
+      }
+      delete nextExtensions[mergeSourceKey];
+    }
+
+    nextExtensions[key] = {
+      ...baseRec,
+      ids: mergedIds,
+      storeUrls: mergedStoreUrls,
+      equivalentAlternative: true,
+      ...(resolvedAltName ? { alternativeName: resolvedAltName } : {}),
+      updatedAt: new Date().toISOString()
+    };
+  }
+
+  const nextPayload = {
+    ...normalizeSyncPayload(cached),
+    updatedAt: new Date().toISOString(),
+    updatedBy: {
+      deviceId: settings.deviceId,
+      deviceName: settings.deviceName || browserEnv.label,
+      browser: browserEnv.brand,
+      family: browserEnv.family
+    },
+    extensions: nextExtensions
+  };
+
+  await saveRemoteCache(nextPayload);
+
+  const token = (settings.githubToken || '').trim();
+  const gistId = (settings.gistId || '').trim();
+  if (token && gistId) {
+    try {
+      await updateSyncGist(token, gistId, nextPayload);
+    } catch (err) {
+      console.warn('Failed to push equivalent alternative update to Gist:', err);
+    }
+  }
+
+  return customBrowserIds[key];
 }
 
 /**

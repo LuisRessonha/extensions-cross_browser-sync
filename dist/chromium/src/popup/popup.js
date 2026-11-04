@@ -238,6 +238,15 @@ function renderDashboard() {
       ffTag.title = `Firefox ID: ${item.ids.firefox}`;
       metaRow.appendChild(ffTag);
     }
+    if (item.equivalentAlternative) {
+      const altTag = document.createElement('span');
+      altTag.className = 'store-tag store-tag-alt';
+      altTag.textContent = '≈ Alt';
+      altTag.title = item.alternativeName
+        ? `Matched with Equivalent Alternative: ${item.alternativeName}`
+        : 'Matched with an Equivalent Alternative across browsers';
+      metaRow.appendChild(altTag);
+    }
 
     info.appendChild(titleRow);
     info.appendChild(metaRow);

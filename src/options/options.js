@@ -15,6 +15,7 @@ let currentState = null;
 let activeMatrixFilter = 'all';
 let availableXpiByKey = {};
 let xpiCheckPromise = null;
+let activeAlternativeItem = null;
 
 const els = {
   envBadge: document.getElementById('env-badge'),
@@ -29,6 +30,20 @@ const els = {
   catalogJsonPre: document.getElementById('catalog-json-pre'),
   closeCatalogJsonModalBtn: document.getElementById('close-catalog-json-modal-btn'),
   copyCatalogJsonBtn: document.getElementById('copy-catalog-json-btn'),
+  matchAlternativeModal: document.getElementById('match-alternative-modal'),
+  matchAlternativeModalTitle: document.getElementById('match-alternative-modal-title'),
+  altModalDesc: document.getElementById('alt-modal-desc'),
+  closeAlternativeModalBtn: document.getElementById('close-alternative-modal-btn'),
+  altTargetFamily: document.getElementById('alt-target-family'),
+  altExistingSelect: document.getElementById('alt-existing-select'),
+  altStoreSearchInput: document.getElementById('alt-store-search-input'),
+  altStoreSearchBtn: document.getElementById('alt-store-search-btn'),
+  altStoreResults: document.getElementById('alt-store-results'),
+  altIdInput: document.getElementById('alt-id-input'),
+  altNameInput: document.getElementById('alt-name-input'),
+  clearAlternativeBtn: document.getElementById('clear-alternative-btn'),
+  cancelAlternativeBtn: document.getElementById('cancel-alternative-btn'),
+  saveAlternativeBtn: document.getElementById('save-alternative-btn'),
   alertBanner: document.getElementById('alert-banner'),
   githubToken: document.getElementById('github-token'),
   toggleTokenBtn: document.getElementById('toggle-token-btn'),
@@ -320,6 +335,17 @@ function renderMatrix() {
     verEl.textContent = item.version ? `v${item.version}` : '';
     nameBox.appendChild(titleEl);
     nameBox.appendChild(verEl);
+    if (item.equivalentAlternative) {
+      const altBadge = document.createElement('div');
+      altBadge.className = 'alt-badge';
+      altBadge.textContent = item.alternativeName
+        ? `≈ Equivalent: ${item.alternativeName}`
+        : '≈ Equivalent Alternative';
+      altBadge.title = item.alternativeName
+        ? `Flagged as an Equivalent Alternative across browsers (paired with "${item.alternativeName}")`
+        : 'Flagged as an Equivalent Alternative across browsers';
+      nameBox.appendChild(altBadge);
+    }
     extWrap.appendChild(nameBox);
     tdExt.appendChild(extWrap);
 
@@ -528,6 +554,23 @@ function renderMatrix() {
     });
 
     idList.appendChild(saveIdsBtn);
+
+    if (!initialCr || !initialFf || item.equivalentAlternative) {
+      const matchAltBtn = document.createElement('button');
+      matchAltBtn.type = 'button';
+      matchAltBtn.className = 'btn btn-sm btn-alt-match';
+      matchAltBtn.textContent = item.equivalentAlternative
+        ? 'Edit Alternative ⇄'
+        : 'Match Alternative ⇄';
+      matchAltBtn.title = item.equivalentAlternative
+        ? 'Edit or unflag the matched equivalent alternative extension'
+        : 'Extension is unavailable on both stores — match it with an equivalent alternative and flag it as an Equivalent Alternative';
+      matchAltBtn.addEventListener('click', () => {
+        openMatchAlternativeModal(item, { initialCr, initialFf });
+      });
+      idList.appendChild(matchAltBtn);
+    }
+
     tdIds.appendChild(idList);
 
     // Col 4: Sync Status
@@ -1001,6 +1044,222 @@ document.addEventListener('keydown', (e) => {
     if (!els.catalogJsonModal.classList.contains('hidden')) {
       closeCatalogJsonModal();
     }
+    if (!els.matchAlternativeModal.classList.contains('hidden')) {
+      closeMatchAlternativeModal();
+    }
+  }
+});
+
+function populateExistingAlternativesDropdown(item, targetFamily) {
+  els.altExistingSelect.replaceChildren();
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = '— Select an existing extension to pair & merge —';
+  els.altExistingSelect.appendChild(placeholder);
+
+  const allItems = currentState?.comparison?.items || [];
+  for (const candidate of allItems) {
+    if (!candidate || candidate.key === item.key) continue;
+    const candidateId =
+      targetFamily === 'chromium'
+        ? candidate.ids?.chromium
+        : candidate.ids?.firefox ||
+          (candidate.localId && currentState?.browserEnv?.family === 'firefox'
+            ? candidate.localId
+            : '');
+    if (!candidateId) continue;
+
+    const opt = document.createElement('option');
+    opt.value = candidate.key;
+    opt.dataset.extId = candidateId;
+    opt.dataset.extName = candidate.name || candidate.key;
+    opt.dataset.localId = candidate.localId || '';
+    opt.dataset.storeUrl =
+      (targetFamily === 'chromium'
+        ? candidate.storeUrls?.chromium
+        : candidate.storeUrls?.firefox) || '';
+    opt.textContent = `${candidate.name} (${candidateId})`;
+    els.altExistingSelect.appendChild(opt);
+  }
+}
+
+function openMatchAlternativeModal(item, { initialCr, initialFf }) {
+  activeAlternativeItem = item;
+  els.matchAlternativeModalTitle.textContent = `Match Equivalent Alternative — ${item.name}`;
+
+  const defaultTarget = !initialFf && initialCr ? 'firefox' : !initialCr && initialFf ? 'chromium' : 'firefox';
+  els.altTargetFamily.value = defaultTarget;
+
+  const updateTargetFields = () => {
+    const fam = els.altTargetFamily.value;
+    populateExistingAlternativesDropdown(item, fam);
+    const currentId = fam === 'chromium' ? initialCr : initialFf;
+    const currentUrl =
+      fam === 'chromium' ? item.storeUrls?.chromium : item.storeUrls?.firefox;
+    els.altIdInput.value = item.equivalentAlternative ? currentUrl || currentId || '' : '';
+    els.altIdInput.placeholder =
+      fam === 'chromium'
+        ? 'Paste Chrome Web Store URL or 32-char Chromium ID...'
+        : 'Paste Firefox Add-ons (AMO) URL or Add-on GUID/slug...';
+  };
+
+  updateTargetFields();
+  els.altNameInput.value = item.alternativeName || '';
+  els.altStoreSearchInput.value = item.alternativeName || item.name || '';
+  els.altStoreResults.replaceChildren();
+  els.altStoreResults.classList.add('hidden');
+
+  if (item.equivalentAlternative) {
+    els.clearAlternativeBtn.classList.remove('hidden');
+  } else {
+    els.clearAlternativeBtn.classList.add('hidden');
+  }
+
+  els.altTargetFamily.onchange = updateTargetFields;
+  els.matchAlternativeModal.classList.remove('hidden');
+}
+
+function closeMatchAlternativeModal() {
+  els.matchAlternativeModal.classList.add('hidden');
+  activeAlternativeItem = null;
+}
+
+els.closeAlternativeModalBtn.addEventListener('click', closeMatchAlternativeModal);
+els.cancelAlternativeBtn.addEventListener('click', closeMatchAlternativeModal);
+els.matchAlternativeModal.addEventListener('click', (e) => {
+  if (e.target === els.matchAlternativeModal) {
+    closeMatchAlternativeModal();
+  }
+});
+
+els.altExistingSelect.addEventListener('change', () => {
+  const selectedOpt = els.altExistingSelect.selectedOptions?.[0];
+  if (!selectedOpt || !selectedOpt.value) return;
+  els.altIdInput.value = selectedOpt.dataset.storeUrl || selectedOpt.dataset.extId || '';
+  els.altNameInput.value = selectedOpt.dataset.extName || '';
+});
+
+els.altStoreSearchBtn.addEventListener('click', async () => {
+  const query = els.altStoreSearchInput.value.trim();
+  const family = els.altTargetFamily.value;
+  if (!query) return;
+
+  try {
+    els.altStoreSearchBtn.disabled = true;
+    els.altStoreSearchBtn.textContent = 'Searching...';
+    const res = await sendMessage({
+      type: 'SEARCH_STORE_ALTERNATIVES',
+      query,
+      family
+    });
+    const results = res.results || [];
+    els.altStoreResults.replaceChildren();
+    els.altStoreResults.classList.remove('hidden');
+
+    if (results.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'alt-search-item muted';
+      empty.textContent = 'No matching store extensions found.';
+      els.altStoreResults.appendChild(empty);
+      return;
+    }
+
+    for (const cand of results) {
+      const row = document.createElement('div');
+      row.className = 'alt-search-item';
+
+      const info = document.createElement('div');
+      info.className = 'alt-search-info';
+      const title = document.createElement('div');
+      title.className = 'alt-search-title';
+      title.textContent = cand.name;
+      const sub = document.createElement('div');
+      sub.className = 'alt-search-sub';
+      sub.textContent = cand.id;
+      info.append(title, sub);
+
+      const selectBtn = document.createElement('button');
+      selectBtn.type = 'button';
+      selectBtn.className = 'btn btn-secondary btn-sm';
+      selectBtn.textContent = 'Select';
+      selectBtn.title = `Use "${cand.name}" (${cand.id}) as the equivalent alternative`;
+      selectBtn.addEventListener('click', () => {
+        els.altIdInput.value = cand.storeUrl || cand.id;
+        els.altNameInput.value = cand.name;
+      });
+
+      row.append(info, selectBtn);
+      els.altStoreResults.appendChild(row);
+    }
+  } catch (err) {
+    showAlert(err.message, true);
+  } finally {
+    els.altStoreSearchBtn.disabled = false;
+    els.altStoreSearchBtn.textContent = 'Search Store';
+  }
+});
+
+els.saveAlternativeBtn.addEventListener('click', async () => {
+  if (!activeAlternativeItem) return;
+  const targetFamily = els.altTargetFamily.value;
+  const alternativeInput = els.altIdInput.value.trim();
+  const alternativeName = els.altNameInput.value.trim();
+  const selectedOpt = els.altExistingSelect.selectedOptions?.[0];
+  const mergeSourceKey = selectedOpt?.value || '';
+  const mergeSourceLocalId = selectedOpt?.dataset?.localId || '';
+
+  if (!alternativeInput) {
+    showAlert('Please enter or select an equivalent extension Store URL or ID.', true);
+    return;
+  }
+
+  try {
+    els.saveAlternativeBtn.disabled = true;
+    const itemName = activeAlternativeItem.name;
+    const res = await sendMessage({
+      type: 'SAVE_EQUIVALENT_ALTERNATIVE',
+      key: activeAlternativeItem.key,
+      targetFamily,
+      alternativeInput,
+      alternativeName,
+      mergeSourceKey,
+      mergeSourceLocalId,
+      clearAlternative: false
+    });
+    currentState = res.data;
+    closeMatchAlternativeModal();
+    renderMatrix();
+    refreshXpiAvailability();
+    showAlert(
+      `Matched "${itemName}" with equivalent alternative${
+        res.savedAlternative?.alternativeName ? ` "${res.savedAlternative.alternativeName}"` : ''
+      } and flagged as Equivalent Alternative!`
+    );
+  } catch (err) {
+    showAlert(err.message, true);
+  } finally {
+    els.saveAlternativeBtn.disabled = false;
+  }
+});
+
+els.clearAlternativeBtn.addEventListener('click', async () => {
+  if (!activeAlternativeItem) return;
+  try {
+    els.clearAlternativeBtn.disabled = true;
+    const itemName = activeAlternativeItem.name;
+    const res = await sendMessage({
+      type: 'SAVE_EQUIVALENT_ALTERNATIVE',
+      key: activeAlternativeItem.key,
+      clearAlternative: true
+    });
+    currentState = res.data;
+    closeMatchAlternativeModal();
+    renderMatrix();
+    showAlert(`Removed Equivalent Alternative flag from "${itemName}".`);
+  } catch (err) {
+    showAlert(err.message, true);
+  } finally {
+    els.clearAlternativeBtn.disabled = false;
   }
 });
 

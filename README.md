@@ -38,6 +38,7 @@ Missing extensions display an **`Install ▾`** dropdown in both the **Popup** a
 - **Browser IDs Column (`Cr:`, `Ff:`, `Ed:`)**:
   - Displays known IDs for each browser family alongside direct **`Store ↗`** buttons for every available store.
   - Supports inline editing of Chromium and Firefox IDs (accepts either raw IDs or full store URLs) via **`Save IDs`**.
+  - **Equivalent Alternative Matching (`Match Alternative ⇄`)**: When an extension is unavailable on both stores (only on Chrome or only on Firefox), click **`Match Alternative ⇄`** to pair it with an equivalent alternative extension on the other browser (by selecting an existing extension in your list, searching the counterpart browser store directly, or pasting a store URL/ID) and flag it with the **`≈ Equivalent Alternative`** badge across browsers and in your Gist.
 - **Catalog JSON Snippet Modal (`Catalog JSON`)**: Generates a ready-to-paste `KNOWN_EXTENSIONS_CATALOG` object (complete with `xpiFile: 'xpi-files/<key>.xpi'`) for any extension.
 - **Remote Gist Management**: Remove individual extensions from your Gist (**`Remove from Gist`**) or wipe the remote list (**`Clear Saved Gist Data`**).
 

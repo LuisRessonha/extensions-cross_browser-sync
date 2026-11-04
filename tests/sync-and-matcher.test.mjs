@@ -382,4 +382,56 @@ test('planSyncExecution and computeSyncComparison track ignored extensions in Gi
   assert.equal(ignoredItem?.status, 'ignored');
 });
 
+test('equivalentAlternative flag and alternativeName propagate across sync comparison and catalog snippets', () => {
+  const settings = {
+    deviceId: 'dev_cr_1',
+    deviceName: 'Chrome',
+    syncDisabledExtensions: true,
+    includeDevelopmentExtensions: false,
+    ignoredKeys: [],
+    customMappings: {},
+    customBrowserIds: {
+      'chrome-only-tab-manager': {
+        chromium: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        firefox: 'simple-tab-groups@drive4ik',
+        firefoxUrl: 'https://addons.mozilla.org/firefox/addon/simple-tab-groups/',
+        equivalentAlternative: true,
+        alternativeName: 'Simple Tab Groups'
+      }
+    }
+  };
+
+  const localInstalled = [
+    {
+      id: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      name: 'Chrome Only Tab Manager',
+      enabled: true,
+      version: '2.1.0'
+    }
+  ];
+
+  const comparison = computeSyncComparison({
+    localExtensions: localInstalled,
+    remotePayload: createEmptySyncPayload(),
+    browserEnv: { family: 'chromium', brand: 'chrome', label: 'Chrome' },
+    settings,
+    localMeta: { updatedAtByKey: {} }
+  });
+
+  assert.equal(comparison.items.length, 1);
+  const item = comparison.items[0];
+  assert.equal(item.equivalentAlternative, true);
+  assert.equal(item.alternativeName, 'Simple Tab Groups');
+  assert.equal(item.ids.firefox, 'simple-tab-groups@drive4ik');
+
+  const catalogEntry = buildCatalogEntry(item);
+  assert.equal(catalogEntry.equivalentAlternative, true);
+  assert.equal(catalogEntry.alternativeName, 'Simple Tab Groups');
+  assert.ok(catalogEntry.aliases.includes('Simple Tab Groups'));
+  const snippet = formatCatalogEntrySnippet(catalogEntry);
+  assert.ok(snippet.includes('equivalentAlternative: true,'));
+  assert.ok(snippet.includes("alternativeName: 'Simple Tab Groups',"));
+});
+
+
 

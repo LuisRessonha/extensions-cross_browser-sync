@@ -10,7 +10,8 @@ import {
   resolveCanonicalKey,
   resolveDirectInstallTarget,
   resolveFullCatalogEntry,
-  resolveRepoXpiInstallTarget
+  resolveRepoXpiInstallTarget,
+  searchStoreAlternatives
 } from '../shared/matcher.js';
 import {
   getSettings,
@@ -31,6 +32,7 @@ import {
   isCurrentlyApplyingRemoteState,
   performSync,
   removeExtensionFromGist,
+  saveEquivalentAlternative,
   saveManualBrowserIds,
   toggleIgnoreKeyAndSync
 } from '../shared/sync-engine.js';
@@ -347,11 +349,35 @@ ext?.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
           const savedIds = await saveManualBrowserIds({
             key: message.key,
             chromiumInput: message.chromiumInput,
-            firefoxInput: message.firefoxInput
+            firefoxInput: message.firefoxInput,
+            equivalentAlternative: message.equivalentAlternative,
+            alternativeName: message.alternativeName
           });
           const state = await getDashboardState({ refreshRemote: false });
           await refreshBadge();
           sendResponse({ ok: true, savedIds, data: state });
+          break;
+        }
+
+        case 'SAVE_EQUIVALENT_ALTERNATIVE': {
+          const savedAlternative = await saveEquivalentAlternative({
+            key: message.key,
+            targetFamily: message.targetFamily,
+            alternativeInput: message.alternativeInput,
+            alternativeName: message.alternativeName,
+            mergeSourceKey: message.mergeSourceKey,
+            mergeSourceLocalId: message.mergeSourceLocalId,
+            clearAlternative: Boolean(message.clearAlternative)
+          });
+          const state = await getDashboardState({ refreshRemote: false });
+          await refreshBadge();
+          sendResponse({ ok: true, savedAlternative, data: state });
+          break;
+        }
+
+        case 'SEARCH_STORE_ALTERNATIVES': {
+          const results = await searchStoreAlternatives(message.query, message.family);
+          sendResponse({ ok: true, results });
           break;
         }
 

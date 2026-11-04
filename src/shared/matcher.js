@@ -447,12 +447,14 @@ export async function parseAndResolveManualBrowserId(rawInput, family) {
   }
 
   if (family === 'chromium') {
-    const urlMatch = trimmed.match(/\/detail\/(?:[^/"'\s?]+\/)?([a-p]{32})/i);
-    if (urlMatch?.[1]) {
-      const id = urlMatch[1].toLowerCase();
+    const urlMatch = trimmed.match(/\/detail\/(?:([^/"'\s?]+)\/)?([a-p]{32})/i);
+    if (urlMatch?.[2]) {
+      const id = urlMatch[2].toLowerCase();
+      const rawSlug = urlMatch[1] ? decodeURIComponent(urlMatch[1]).replace(/[-_]+/g, ' ').trim() : '';
       return {
         id,
-        storeUrl: `https://chromewebstore.google.com/detail/${id}`
+        storeUrl: `https://chromewebstore.google.com/detail/${id}`,
+        ...(rawSlug ? { name: rawSlug } : {})
       };
     }
     const cleanId = trimmed.toLowerCase();
@@ -475,9 +477,14 @@ export async function parseAndResolveManualBrowserId(rawInput, family) {
     if (res.ok) {
       const data = await res.json();
       if (data?.guid) {
+        const resolvedName =
+          typeof data.name === 'string'
+            ? data.name
+            : data.name?.['en-US'] || Object.values(data.name || {})[0] || '';
         return {
           id: data.guid,
-          storeUrl: data.url || `https://addons.mozilla.org/firefox/addon/${slugOrId}/`
+          storeUrl: data.url || `https://addons.mozilla.org/firefox/addon/${slugOrId}/`,
+          ...(resolvedName ? { name: resolvedName } : {})
         };
       }
     }
@@ -491,6 +498,84 @@ export async function parseAndResolveManualBrowserId(rawInput, family) {
       ? trimmed
       : `https://addons.mozilla.org/firefox/addon/${encodeURIComponent(slugOrId)}/`
   };
+}
+
+/**
+ * Searches Mozilla AMO or Chrome Web Store for candidate alternative extensions by keyword.
+ *
+ * @param {string} query
+ * @param {'chromium' | 'firefox'} family
+ * @returns {Promise<Array<{ id: string, name: string, storeUrl: string, iconUrl?: string, summary?: string }>>}
+ */
+export async function searchStoreAlternatives(query, family) {
+  const q = (query || '').trim();
+  if (!q) return [];
+
+  if (family === 'firefox') {
+    try {
+      const res = await fetch(
+        `https://addons.mozilla.org/api/v5/addons/search/?q=${encodeURIComponent(
+          q
+        )}&type=extension&page_size=6&lang=en-US`
+      );
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data?.results)) return [];
+      return data.results
+        .filter((item) => item?.guid)
+        .map((item) => {
+          const name =
+            typeof item.name === 'string'
+              ? item.name
+              : item.name?.['en-US'] || Object.values(item.name || {})[0] || item.slug || item.guid;
+          const summary =
+            typeof item.summary === 'string'
+              ? item.summary
+              : item.summary?.['en-US'] || Object.values(item.summary || {})[0] || '';
+          return {
+            id: item.guid,
+            name,
+            storeUrl:
+              item.url ||
+              `https://addons.mozilla.org/firefox/addon/${encodeURIComponent(
+                item.slug || item.guid
+              )}/`,
+            iconUrl: item.icons?.['64'] || item.icon_url || '',
+            summary
+          };
+        });
+    } catch {
+      return [];
+    }
+  }
+
+  // Chromium: search Chrome Web Store and extract top detail links
+  try {
+    const res = await fetch(`https://chromewebstore.google.com/search/${encodeURIComponent(q)}`);
+    if (!res.ok) return [];
+    const html = await res.text();
+    const regex = /\/detail\/([^/"'\s?]+)\/([a-p]{32})/gi;
+    const seen = new Set();
+    const results = [];
+    let match;
+    while ((match = regex.exec(html)) !== null && results.length < 6) {
+      const rawSlug = decodeURIComponent(match[1]);
+      const id = match[2].toLowerCase();
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const readableName = rawSlug
+        .replace(/[-_]+/g, ' ')
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+      results.push({
+        id,
+        name: readableName,
+        storeUrl: `https://chromewebstore.google.com/detail/${id}`
+      });
+    }
+    return results;
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -609,6 +694,12 @@ export function buildCatalogEntry(item, extra = {}) {
   if (item?.name && item.name !== name) {
     aliasSet.add(item.name);
   }
+  if (item?.alternativeName && item.alternativeName !== name) {
+    aliasSet.add(item.alternativeName);
+  }
+  if (extra?.alternativeName && extra.alternativeName !== name) {
+    aliasSet.add(extra.alternativeName);
+  }
   if (item?.name) {
     const shortParts = item.name.split(/\s+[-–—:]\s+|\s*:\s+/);
     if (shortParts[0] && shortParts[0].trim().length >= 3 && shortParts[0].trim() !== name) {
@@ -649,6 +740,12 @@ export function buildCatalogEntry(item, extra = {}) {
     catalog?.xpiFile ||
     (safeKey ? `xpi-files/${safeKey}.xpi` : '');
 
+  const equivalentAlternative = Boolean(
+    extra.equivalentAlternative ?? item?.equivalentAlternative ?? catalog?.equivalentAlternative
+  );
+  const alternativeName =
+    extra.alternativeName || item?.alternativeName || catalog?.alternativeName || '';
+
   return {
     key,
     name,
@@ -657,7 +754,9 @@ export function buildCatalogEntry(item, extra = {}) {
     edgeId,
     firefoxId,
     firefoxSlug,
-    xpiFile
+    xpiFile,
+    ...(equivalentAlternative ? { equivalentAlternative: true } : {}),
+    ...(alternativeName ? { alternativeName } : {})
   };
 }
 
@@ -682,6 +781,12 @@ export function formatCatalogEntrySnippet(entry) {
   }
   lines.push(`    firefoxId: '${esc(entry.firefoxId)}',`);
   lines.push(`    firefoxSlug: '${esc(entry.firefoxSlug)}',`);
+  if (entry.equivalentAlternative) {
+    lines.push(`    equivalentAlternative: true,`);
+  }
+  if (entry.alternativeName) {
+    lines.push(`    alternativeName: '${esc(entry.alternativeName)}',`);
+  }
   lines.push(`    xpiFile: '${esc(entry.xpiFile || `xpi-files/${entry.key}.xpi`)}'`);
   lines.push('  }');
   return lines.join('\n');
