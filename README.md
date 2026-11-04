@@ -1,6 +1,32 @@
-# extensions-cross_browser-sync
+# Cross-Browser Extensions Sync
 
-Cross-browser WebExtension (Manifest V3) to sync your installed browser extensions, their **enabled/disabled state**, and **ignored extensions** across **Chromium-based browsers** (Chrome, Edge, Brave, Vivaldi, Opera) and **Firefox** using a private **GitHub Gist** — with support for **1-click Store Auto-Install** and **Git Repository `.xpi` File Auto-Install**.
+<p align="center">
+  <img src="assets/icon-128.png" alt="Cross-Browser Extensions Sync Icon" width="96" height="96" />
+</p>
+
+<p align="center">
+  <strong>Synchronize your installed browser extensions and their states across Chromium-based browsers and Firefox via a private GitHub Gist.</strong>
+</p>
+
+<p align="center">
+  <a href="PRIVACY.md">Privacy Policy</a> •
+  <a href="#key-features">Key Features</a> •
+  <a href="#screenshots">Screenshots</a> •
+  <a href="#quick-start--installation">Quick Start</a> •
+  <a href="#configuration">Configuration</a>
+</p>
+
+---
+
+Cross-browser WebExtension (Manifest V3) to sync your installed browser extensions, their **enabled/disabled state**, and **ignored extensions** across **Chromium-based browsers** (Chrome, Edge, Brave, Vivaldi, Opera) and **Firefox** using your own private **GitHub Gist** — with support for **1-click Store Auto-Install** and **Git Repository `.xpi` File Auto-Install**.
+
+---
+
+## Screenshots
+
+| Dashboard | Popup & Settings |
+|:---:|:---:|
+| ![Dashboard](screenshots/dashboard.png) | ![Popup](screenshots/popup.png)<br/><br/>![Settings](screenshots/settings.png) |
 
 ---
 
@@ -75,9 +101,11 @@ This generates icons in `assets/` and outputs clean browser-specific packages fr
 
 ---
 
-## Configuring GitHub Gist & Git Repo (`xpi-files`)
+## Configuration
 
-1. Click the **extensions-cross_browser-sync** toolbar icon and click **Settings** (gear icon) to open the Dashboard, then click **Settings** in the top-right bar.
+### Configuring GitHub Gist & Git Repo (`xpi-files`)
+
+1. Click the **Cross-Browser Extensions Sync** toolbar icon and click **Settings** (gear icon) to open the Dashboard, then click **Settings** in the top-right bar.
 2. **GitHub Gist Backend**:
    - Create a [GitHub Personal Access Token](https://github.com/settings/tokens/new?scopes=gist&description=extensions-cross_browser-sync) with the **`gist`** scope.
    - Paste your token (use **Show/Hide** to verify):
@@ -120,4 +148,19 @@ npm run update-catalog-xpi-paths
 npm test
 ```
 
+---
 
+## Privacy & Security
+
+Cross-Browser Extensions Sync is designed with strict privacy principles:
+- **No intermediary servers**: Communicates solely with GitHub's official API (`api.github.com`) and public browser store endpoints.
+- **Local credentials**: Your GitHub Personal Access Token is stored strictly on your local machine using `chrome.storage.local`.
+- **Zero tracking or analytics**: No user tracking, no telemetry, no collection of browsing history or web traffic.
+
+For full details, please read our [Privacy Policy](PRIVACY.md).
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
