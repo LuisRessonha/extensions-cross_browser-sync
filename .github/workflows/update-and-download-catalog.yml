@@ -33,13 +33,16 @@ jobs:
         with:
           node-version: '22'
 
-      - name: 1. Update KNOWN_EXTENSIONS_CATALOG with gist content
+      - name: 1. Sync catalog.js to dist/firefox and dist/chromium
+        run: npm run build
+
+      - name: 2. Update KNOWN_EXTENSIONS_CATALOG with gist content
         env:
           GIST_ID: ${{ inputs.gist_id || vars.GIST_ID }}
           GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
         run: node scripts/update-catalog.mjs
 
-      - name: 2. Download/update xpi files
+      - name: 3. Download/update xpi files
         run: |
           if [ "${{ inputs.force }}" = "true" ]; then
             node scripts/download-xpi.mjs --force
@@ -47,10 +50,10 @@ jobs:
             node scripts/download-xpi.mjs
           fi
 
-      - name: 3. Update xpi file path in KNOWN_EXTENSIONS_CATALOG
+      - name: 4. Update xpi file path in KNOWN_EXTENSIONS_CATALOG
         run: node scripts/update-catalog-xpi-paths.mjs
 
-      - name: Rebuild extension packages and run tests
+      - name: 5. Sync updated catalog.js to dist/firefox and dist/chromium and run tests
         run: |
           npm run build
           npm test
