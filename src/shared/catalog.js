@@ -57,5 +57,35 @@ export const KNOWN_EXTENSIONS_CATALOG = [
     firefoxId: 'dwithease@forkpoint.com',
     firefoxSlug: 'dwithease',
     xpiFile: 'xpi-files/demandware-with-ease.xpi'
+  },
+  {
+    key: 'save-image-as-png',
+    name: 'Save Image As Png',
+    aliases: ['Save image as Type'],
+    chromiumId: 'lcmjmlikfpkekigllmmcdcmmpledladh',
+    firefoxId: 'SaveImageAsType@d7om.dev',
+    firefoxSlug: 'siat',
+    equivalentAlternative: true,
+    alternativeName: 'Save image as Type',
+    xpiFile: 'xpi-files/save-image-as-png.xpi'
+  },
+  {
+    key: 'udemy-custom-speed-changer',
+    name: 'Udemy Custom Speed Changer',
+    aliases: ['Custom Speed for Udemy'],
+    chromiumId: 'mfinfiagnpnbijihonbeadgnfbihhpcf',
+    firefoxId: 'customspeed@example.com',
+    firefoxSlug: 'custom-speed-for-udemy',
+    equivalentAlternative: true,
+    alternativeName: 'Custom Speed for Udemy',
+    xpiFile: 'xpi-files/udemy-custom-speed-changer.xpi'
+  },
+  {
+    key: 'udemy-watcher',
+    name: 'Udemy Watcher',
+    chromiumId: 'pnhffcbmfokemolmmdfdagcfmpibkabp',
+    firefoxId: '{8dbdb4cd-15d0-4302-ac56-9a91c9a9e047}',
+    firefoxSlug: 'udemy-watcher',
+    xpiFile: 'xpi-files/udemy-watcher.xpi'
   }
 ];

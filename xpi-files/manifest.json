@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-04T12:12:13.744Z",
+  "updatedAt": "2026-11-09T10:34:10.109Z",
   "extensions": {
     "bitwarden": {
       "key": "bitwarden",
@@ -90,6 +90,51 @@
       "amoHash": "sha256:6b5869e465be8b043409e4f8aecd158e8144ad67de32ffea0fc3f14f070de961",
       "sizeBytes": 4034213,
       "updatedAt": "2026-11-04T10:31:45.501Z"
+    },
+    "save-image-as-png": {
+      "key": "save-image-as-png",
+      "name": "Save Image As Png",
+      "fileName": "save-image-as-png.xpi",
+      "xpiFile": "xpi-files/save-image-as-png.xpi",
+      "version": "20.2",
+      "chromiumId": "lcmjmlikfpkekigllmmcdcmmpledladh",
+      "firefoxId": "SaveImageAsType@d7om.dev",
+      "firefoxSlug": "siat",
+      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/4947427/siat-20.2.xpi",
+      "sha256": "05378563619f0b768529b3336fd2303e5f18ac510fc8d2ded73bd678e85b9844",
+      "amoHash": "sha256:05378563619f0b768529b3336fd2303e5f18ac510fc8d2ded73bd678e85b9844",
+      "sizeBytes": 309950,
+      "updatedAt": "2026-11-09T10:34:09.673Z"
+    },
+    "udemy-custom-speed-changer": {
+      "key": "udemy-custom-speed-changer",
+      "name": "Udemy Custom Speed Changer",
+      "fileName": "udemy-custom-speed-changer.xpi",
+      "xpiFile": "xpi-files/udemy-custom-speed-changer.xpi",
+      "version": "1.0.4",
+      "chromiumId": "mfinfiagnpnbijihonbeadgnfbihhpcf",
+      "firefoxId": "customspeed@example.com",
+      "firefoxSlug": "custom-speed-for-udemy",
+      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/5081957/custom_speed_for_udemy-1.0.4.xpi",
+      "sha256": "551fc5ff457af240fa11c92fe1ec1e4423b1010e60a2f154d521a4b6c2bc5d25",
+      "amoHash": "sha256:551fc5ff457af240fa11c92fe1ec1e4423b1010e60a2f154d521a4b6c2bc5d25",
+      "sizeBytes": 18642,
+      "updatedAt": "2026-11-09T10:34:09.918Z"
+    },
+    "udemy-watcher": {
+      "key": "udemy-watcher",
+      "name": "Udemy Watcher",
+      "fileName": "udemy-watcher.xpi",
+      "xpiFile": "xpi-files/udemy-watcher.xpi",
+      "version": "1.0.0",
+      "chromiumId": "pnhffcbmfokemolmmdfdagcfmpibkabp",
+      "firefoxId": "{8dbdb4cd-15d0-4302-ac56-9a91c9a9e047}",
+      "firefoxSlug": "udemy-watcher",
+      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/4364844/udemy_watcher-1.0.0.xpi",
+      "sha256": "66c0bdb8fa9b80f47497e543af29ce32900a116bff25886349fa7b96d0c39cf1",
+      "amoHash": "sha256:66c0bdb8fa9b80f47497e543af29ce32900a116bff25886349fa7b96d0c39cf1",
+      "sizeBytes": 19364,
+      "updatedAt": "2026-11-09T10:34:10.109Z"
     }
   }
 }
