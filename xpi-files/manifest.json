@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-09T10:34:10.109Z",
+  "updatedAt": "2026-11-16T03:03:44.166Z",
   "extensions": {
     "bitwarden": {
       "key": "bitwarden",
@@ -21,15 +21,15 @@
       "name": "uBlock Origin Lite",
       "fileName": "ublock-origin-lite.xpi",
       "xpiFile": "xpi-files/ublock-origin-lite.xpi",
-      "version": "2026.1103.1743",
+      "version": "2026.1110.1816",
       "chromiumId": "ddkjiahejlhfcafbddmgiahcphecmpfh",
       "firefoxId": "uBOLiteRedux@raymondhill.net",
       "firefoxSlug": "ublock-origin-lite",
-      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/5203987/ublock_origin_lite-2026.1103.1743.xpi",
-      "sha256": "cca96aed8355bb59168c4af3da638a92dda18378d286af996fbf2013f45d7cc7",
-      "amoHash": "sha256:cca96aed8355bb59168c4af3da638a92dda18378d286af996fbf2013f45d7cc7",
-      "sizeBytes": 9347051,
-      "updatedAt": "2026-11-04T10:04:31.764Z"
+      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/5235054/ublock_origin_lite-2026.1110.1816.xpi",
+      "sha256": "3838bf88742ab921f553795b5b96f21e6429e198c1db3865c414402e5fe55059",
+      "amoHash": "sha256:3838bf88742ab921f553795b5b96f21e6429e198c1db3865c414402e5fe55059",
+      "sizeBytes": 9334051,
+      "updatedAt": "2026-11-16T03:03:38.180Z"
     },
     "udemy": {
       "key": "udemy",
@@ -66,30 +66,30 @@
       "name": "Buster: Captcha Solver for Humans",
       "fileName": "buster.xpi",
       "xpiFile": "xpi-files/buster.xpi",
-      "version": "3.4.0",
+      "version": "3.4.1",
       "chromiumId": "mpbjkejclgfgadiemmefgebjfooflfhl",
       "firefoxId": "{e58d3966-3d76-4cd9-8552-1582fbc800c1}",
       "firefoxSlug": "buster-captcha-solver",
-      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/4859908/buster_captcha_solver-3.4.0.xpi",
-      "sha256": "4030ac4e6c6b6e1763654b159c7a0b921cbfb37e378204e4ad65ffea981d8b47",
-      "amoHash": "sha256:4030ac4e6c6b6e1763654b159c7a0b921cbfb37e378204e4ad65ffea981d8b47",
-      "sizeBytes": 6817227,
-      "updatedAt": "2026-11-04T10:04:32.207Z"
+      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/5257790/buster_captcha_solver-3.4.1.xpi",
+      "sha256": "255436718d8494b45e417699ee129637b5ec0faa3332392aa8499f070418a8bd",
+      "amoHash": "sha256:255436718d8494b45e417699ee129637b5ec0faa3332392aa8499f070418a8bd",
+      "sizeBytes": 8417671,
+      "updatedAt": "2026-11-16T03:03:43.636Z"
     },
     "demandware-with-ease": {
       "key": "demandware-with-ease",
       "name": "Demandware With Ease",
       "fileName": "demandware-with-ease.xpi",
       "xpiFile": "xpi-files/demandware-with-ease.xpi",
-      "version": "4.9.1",
+      "version": "5.0.0",
       "chromiumId": "ffhabonelknmejmdnekedmijlhebpcio",
       "firefoxId": "dwithease@forkpoint.com",
       "firefoxSlug": "dwithease",
-      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/4958315/dwithease-4.9.1.xpi",
-      "sha256": "6b5869e465be8b043409e4f8aecd158e8144ad67de32ffea0fc3f14f070de961",
-      "amoHash": "sha256:6b5869e465be8b043409e4f8aecd158e8144ad67de32ffea0fc3f14f070de961",
-      "sizeBytes": 4034213,
-      "updatedAt": "2026-11-04T10:31:45.501Z"
+      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/5243781/dwithease-5.0.0.xpi",
+      "sha256": "aa3d126033cd5bd28d62b00addf50b82407eea55dc65bfa86bda6da29630b94f",
+      "amoHash": "sha256:aa3d126033cd5bd28d62b00addf50b82407eea55dc65bfa86bda6da29630b94f",
+      "sizeBytes": 4008830,
+      "updatedAt": "2026-11-16T03:03:44.096Z"
     },
     "save-image-as-png": {
       "key": "save-image-as-png",
