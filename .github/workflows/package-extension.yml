@@ -1,0 +1,64 @@
+name: Package Extension Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      package_script:
+        description: 'Package script to run (defaults to package:patch)'
+        required: true
+        default: 'package:patch'
+        type: choice
+        options:
+          - 'package:patch'
+          - 'package:minor'
+          - 'package:major'
+          - 'package'
+
+permissions:
+  contents: write
+
+jobs:
+  package-extension:
+    name: Package Extension (${{ inputs.package_script }})
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Run selected package script (${{ inputs.package_script }})
+        run: npm run ${{ inputs.package_script }}
+
+      - name: Read packaged version
+        id: pkg_version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Upload packaged store ZIPs as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cross-Browser-Extensions-Sync-v${{ steps.pkg_version.outputs.version }}
+          path: |
+            dist/Cross-Browser-Extensions-Sync-chrome-v${{ steps.pkg_version.outputs.version }}.zip
+            dist/Cross-Browser-Extensions-Sync-firefox-v${{ steps.pkg_version.outputs.version }}.zip
+
+      - name: Commit and push updated version and packaged dist
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json manifest.json assets/ dist/
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "chore(release): package v${{ steps.pkg_version.outputs.version }} (${{ inputs.package_script }})"
+            git push
+          fi
