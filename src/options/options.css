@@ -788,4 +788,246 @@ select:focus {
   text-overflow: ellipsis;
 }
 
+/* Extension Groups Bar & Controls */
+.groups-bar-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.groups-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.groups-bar-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-right: 2px;
+}
+
+.groups-bar-list {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.group-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: var(--bg-card);
+  overflow: hidden;
+  transition: all 0.15s ease;
+}
+
+.group-chip.group-filter-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35);
+}
+
+.group-chip.group-active-state {
+  border-color: var(--success);
+  background-color: rgba(16, 185, 129, 0.12);
+}
+
+.group-chip-filter-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+}
+
+.group-chip-filter-btn:hover {
+  background-color: var(--bg-hover);
+}
+
+.group-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.group-count {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  background: rgba(15, 23, 42, 0.65);
+  padding: 1px 5px;
+  border-radius: 8px;
+}
+
+.group-chip-toggle-btn {
+  background: rgba(15, 23, 42, 0.55);
+  border: none;
+  border-left: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.group-chip-toggle-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.group-chip-toggle-btn.is-active {
+  background-color: var(--success);
+  color: #06281e;
+}
+
+/* Matrix Groups Cell & Popover */
+.cell-groups-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: flex-start;
+}
+
+.cell-groups-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.group-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.group-badge.group-badge-default {
+  color: #cbd5e1;
+  border-style: dashed;
+}
+
+.group-picker-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.group-picker-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 195px;
+  background-color: var(--bg-card);
+  border: 1px solid #475569;
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6);
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.group-picker-menu.drop-up {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+.group-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.group-picker-option:hover {
+  background-color: var(--bg-hover);
+}
+
+.group-picker-option input[type='checkbox'] {
+  cursor: pointer;
+}
+
+/* Manage Groups Modal */
+.color-picker-input {
+  width: 40px;
+  height: 36px;
+  padding: 2px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.manage-groups-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.manage-group-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+}
+
+.manage-group-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.manage-group-name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.manage-group-meta {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+
 

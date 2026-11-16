@@ -6,6 +6,7 @@ import {
 
 let currentState = null;
 let activeTab = 'all';
+let activeGroupFilter = 'all';
 let searchQuery = '';
 let availableXpiByKey = {};
 let xpiCheckPromise = null;
@@ -20,6 +21,7 @@ const els = {
   syncMergeBtn: document.getElementById('sync-merge-btn'),
   syncPushBtn: document.getElementById('sync-push-btn'),
   syncPullBtn: document.getElementById('sync-pull-btn'),
+  popupGroupsBar: document.getElementById('popup-groups-bar'),
   countAll: document.getElementById('count-all'),
   countMissing: document.getElementById('count-missing'),
   countDiff: document.getElementById('count-diff'),
@@ -95,6 +97,119 @@ function getStatusLabel(item) {
   }
 }
 
+function getOrderedGroups(groupsMap = {}) {
+  const entries = Object.values(groupsMap);
+  const def = entries.find((g) => g.id === 'default') || {
+    id: 'default',
+    name: 'Default',
+    color: '#64748b',
+    isDefault: true
+  };
+  const others = entries
+    .filter((g) => g && g.id !== 'default')
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  return [def, ...others];
+}
+
+function renderPopupGroupsBar() {
+  if (!els.popupGroupsBar || !currentState) return;
+  const { comparison, settings } = currentState;
+  const groupsMap = comparison?.groups || settings?.groups || {};
+  const activeGroupIds = Array.isArray(comparison?.activeGroupIds)
+    ? comparison.activeGroupIds
+    : Array.isArray(settings?.activeGroupIds)
+    ? settings.activeGroupIds
+    : [];
+  const orderedGroups = getOrderedGroups(groupsMap);
+
+  if (activeGroupFilter !== 'all' && !groupsMap[activeGroupFilter]) {
+    activeGroupFilter = 'all';
+  }
+
+  els.popupGroupsBar.replaceChildren();
+
+  const allChip = document.createElement('div');
+  allChip.className = `popup-group-chip${
+    activeGroupFilter === 'all' ? ' group-filter-selected' : ''
+  }`;
+  const allBtn = document.createElement('button');
+  allBtn.type = 'button';
+  allBtn.className = 'popup-group-filter-btn';
+  allBtn.textContent = 'All Groups';
+  allBtn.title = 'Show extensions from all groups';
+  allBtn.addEventListener('click', () => {
+    activeGroupFilter = 'all';
+    renderDashboard();
+  });
+  allChip.appendChild(allBtn);
+  els.popupGroupsBar.appendChild(allChip);
+
+  for (const grp of orderedGroups) {
+    const isActive = !grp.isDefault && activeGroupIds.includes(grp.id);
+    const isSelected = activeGroupFilter === grp.id;
+
+    const chip = document.createElement('div');
+    chip.className = `popup-group-chip${isSelected ? ' group-filter-selected' : ''}${
+      isActive ? ' group-active-state' : ''
+    }`;
+
+    const filterBtn = document.createElement('button');
+    filterBtn.type = 'button';
+    filterBtn.className = 'popup-group-filter-btn';
+    filterBtn.title = grp.isDefault
+      ? 'Default Group (independent from other groups). Click to filter.'
+      : `Filter by "${grp.name}" group`;
+
+    const dot = document.createElement('span');
+    dot.className = 'group-dot';
+    dot.style.backgroundColor = grp.color || '#3b82f6';
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = grp.name;
+    filterBtn.append(dot, nameSpan);
+    filterBtn.addEventListener('click', () => {
+      activeGroupFilter = activeGroupFilter === grp.id ? 'all' : grp.id;
+      renderDashboard();
+    });
+    chip.appendChild(filterBtn);
+
+    if (!grp.isDefault) {
+      const toggleBtn = document.createElement('button');
+      toggleBtn.type = 'button';
+      toggleBtn.className = `popup-group-toggle-btn${isActive ? ' is-active' : ''}`;
+      toggleBtn.textContent = isActive ? 'ON' : 'OFF';
+      toggleBtn.title = isActive
+        ? `Deactivate group "${grp.name}"`
+        : `Activate group "${grp.name}" (enables extensions in this group; Default stays untouched)`;
+      toggleBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        try {
+          toggleBtn.disabled = true;
+          const res = await sendMessage({
+            type: 'ACTIVATE_GROUP',
+            groupId: grp.id,
+            active: !isActive
+          });
+          currentState = res.data;
+          renderDashboard();
+          const r = res.result;
+          showToast(
+            !isActive
+              ? `Activated "${grp.name}" (${r?.toggledCount ?? 0} toggled).`
+              : `Deactivated "${grp.name}" (${r?.toggledCount ?? 0} toggled).`
+          );
+        } catch (err) {
+          showToast(err.message, true);
+        } finally {
+          toggleBtn.disabled = false;
+        }
+      });
+      chip.appendChild(toggleBtn);
+    }
+
+    els.popupGroupsBar.appendChild(chip);
+  }
+}
+
 function filterItems(items) {
   return items.filter((item) => {
     if (activeTab === 'all' && item.status === 'ignored') return false;
@@ -104,6 +219,11 @@ function filterItems(items) {
     if (activeTab === 'state-diff' && item.status !== 'state-diff') return false;
     if (activeTab === 'missing' && item.status !== 'missing') return false;
     if (activeTab === 'ignored' && item.status !== 'ignored') return false;
+    if (activeGroupFilter !== 'all') {
+      const itemGroups =
+        Array.isArray(item.groups) && item.groups.length > 0 ? item.groups : ['default'];
+      if (!itemGroups.includes(activeGroupFilter)) return false;
+    }
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -146,8 +266,12 @@ async function refreshXpiAvailability() {
 function renderDashboard() {
   if (!currentState) return;
 
-  const { browserEnv, localMeta, hasGistConfigured, comparison } = currentState;
+  const { browserEnv, localMeta, hasGistConfigured, comparison, settings } = currentState;
   const { counts, items } = comparison;
+  const groupsMap = comparison?.groups || settings?.groups || {};
+  const orderedGroups = getOrderedGroups(groupsMap);
+
+  renderPopupGroupsBar();
 
   els.browserBadge.textContent = browserEnv?.label || 'Browser';
   els.lastSyncLabel.textContent = localMeta?.lastSyncAt
@@ -248,12 +372,117 @@ function renderDashboard() {
       metaRow.appendChild(altTag);
     }
 
+    const itemGroups =
+      Array.isArray(item.groups) && item.groups.length > 0 ? item.groups : ['default'];
+    for (const gid of itemGroups) {
+      const grp = groupsMap[gid] || {
+        id: gid,
+        name: gid,
+        color: '#64748b',
+        isDefault: gid === 'default'
+      };
+      const grpTag = document.createElement('span');
+      grpTag.className = `popup-group-tag${grp.isDefault ? ' is-default' : ''}`;
+      grpTag.title = grp.isDefault
+        ? 'Default Group: Not affected when other groups are activated or deactivated'
+        : `Group: ${grp.name}`;
+      const dot = document.createElement('span');
+      dot.className = 'group-dot';
+      dot.style.backgroundColor = grp.color || '#3b82f6';
+      const labelSpan = document.createElement('span');
+      labelSpan.textContent = grp.name;
+      grpTag.append(dot, labelSpan);
+      metaRow.appendChild(grpTag);
+    }
+
     info.appendChild(titleRow);
     info.appendChild(metaRow);
     left.appendChild(info);
 
     const actions = document.createElement('div');
     actions.className = 'ext-actions';
+
+    // Compact Group Assignment Dropdown
+    const groupPickerWrap = document.createElement('div');
+    groupPickerWrap.className = 'group-picker-dropdown';
+    const groupPickerBtn = document.createElement('button');
+    groupPickerBtn.type = 'button';
+    groupPickerBtn.className = 'icon-btn';
+    groupPickerBtn.title = 'Assign groups to this extension';
+    groupPickerBtn.textContent = '🏷';
+    groupPickerBtn.style.fontSize = '12px';
+
+    const groupMenu = document.createElement('div');
+    groupMenu.className = 'group-picker-menu hidden';
+    groupMenu.addEventListener('click', (e) => e.stopPropagation());
+
+    for (const grp of orderedGroups) {
+      const optLabel = document.createElement('label');
+      optLabel.className = 'group-picker-option';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = itemGroups.includes(grp.id);
+      const dot = document.createElement('span');
+      dot.className = 'group-dot';
+      dot.style.backgroundColor = grp.color || '#3b82f6';
+      const text = document.createElement('span');
+      text.textContent = grp.isDefault ? `${grp.name} (Independent)` : grp.name;
+
+      cb.addEventListener('change', async () => {
+        let nextGroups;
+        if (grp.isDefault) {
+          if (cb.checked) {
+            nextGroups = ['default'];
+          } else {
+            const nonDefault = itemGroups.filter((g) => g !== 'default');
+            nextGroups = nonDefault.length > 0 ? nonDefault : ['default'];
+          }
+        } else {
+          const baseNonDefault = itemGroups.filter((g) => g !== 'default');
+          if (cb.checked) {
+            nextGroups = Array.from(new Set([...baseNonDefault, grp.id]));
+          } else {
+            const remaining = baseNonDefault.filter((g) => g !== grp.id);
+            nextGroups = remaining.length > 0 ? remaining : ['default'];
+          }
+        }
+
+        try {
+          const res = await sendMessage({
+            type: 'SET_EXTENSION_GROUPS',
+            key: item.key,
+            groupIds: nextGroups
+          });
+          currentState = res.data;
+          renderDashboard();
+        } catch (err) {
+          showToast(err.message, true);
+        }
+      });
+
+      optLabel.append(cb, dot, text);
+      groupMenu.appendChild(optLabel);
+    }
+
+    groupPickerBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const wasHidden = groupMenu.classList.contains('hidden');
+      for (const openMenu of document.querySelectorAll('.install-dropdown-menu, .group-picker-menu')) {
+        openMenu.classList.add('hidden');
+      }
+      if (wasHidden) {
+        const rect = groupPickerBtn.getBoundingClientRect();
+        if (rect.bottom + 140 > window.innerHeight) {
+          groupMenu.classList.add('drop-up');
+        } else {
+          groupMenu.classList.remove('drop-up');
+        }
+        groupMenu.classList.remove('hidden');
+      }
+    });
+
+    groupPickerWrap.append(groupPickerBtn, groupMenu);
+    actions.appendChild(groupPickerWrap);
 
     if (item.storeInfo?.url) {
       const storeBtn = document.createElement('button');
@@ -346,7 +575,7 @@ function renderDashboard() {
           await xpiCheckPromise;
         }
         const wasHidden = menu.classList.contains('hidden');
-        for (const openMenu of document.querySelectorAll('.install-dropdown-menu')) {
+        for (const openMenu of document.querySelectorAll('.install-dropdown-menu, .group-picker-menu')) {
           openMenu.classList.add('hidden');
         }
         if (wasHidden) {
@@ -531,14 +760,14 @@ els.searchInput.addEventListener('input', (e) => {
 });
 
 document.addEventListener('click', () => {
-  for (const openMenu of document.querySelectorAll('.install-dropdown-menu')) {
+  for (const openMenu of document.querySelectorAll('.install-dropdown-menu, .group-picker-menu')) {
     openMenu.classList.add('hidden');
   }
 });
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    for (const openMenu of document.querySelectorAll('.install-dropdown-menu')) {
+    for (const openMenu of document.querySelectorAll('.install-dropdown-menu, .group-picker-menu')) {
       openMenu.classList.add('hidden');
     }
   }

@@ -25,15 +25,19 @@ import {
   validateTokenAndDiscoverGist
 } from '../shared/gist.js';
 import {
+  activateGroup,
   buildInitialPayloadFromLocal,
   clearGistData,
+  deleteGroup,
   enrichDashboardItemsIds,
   getDashboardState,
   isCurrentlyApplyingRemoteState,
   performSync,
   removeExtensionFromGist,
   saveEquivalentAlternative,
+  saveGroup,
   saveManualBrowserIds,
+  setExtensionGroups,
   toggleIgnoreKeyAndSync
 } from '../shared/sync-engine.js';
 
@@ -463,6 +467,48 @@ ext?.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
             settings
           );
           sendResponse({ ok: true, availableByKey });
+          break;
+        }
+
+        case 'ACTIVATE_GROUP': {
+          const result = await activateGroup({
+            groupId: message.groupId,
+            active: message.active
+          });
+          const state = await getDashboardState({ refreshRemote: false });
+          await refreshBadge();
+          sendResponse({ ok: true, result, data: state });
+          break;
+        }
+
+        case 'SAVE_GROUP': {
+          const savedGroup = await saveGroup({
+            id: message.id,
+            name: message.name,
+            color: message.color
+          });
+          const state = await getDashboardState({ refreshRemote: false });
+          await refreshBadge();
+          sendResponse({ ok: true, savedGroup, data: state });
+          break;
+        }
+
+        case 'DELETE_GROUP': {
+          const deleted = await deleteGroup(message.groupId);
+          const state = await getDashboardState({ refreshRemote: false });
+          await refreshBadge();
+          sendResponse({ ok: true, deleted, data: state });
+          break;
+        }
+
+        case 'SET_EXTENSION_GROUPS': {
+          const updated = await setExtensionGroups({
+            key: message.key,
+            groupIds: message.groupIds
+          });
+          const state = await getDashboardState({ refreshRemote: false });
+          await refreshBadge();
+          sendResponse({ ok: true, updated, data: state });
           break;
         }
 

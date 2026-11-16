@@ -18,9 +18,15 @@ import {
 import {
   computeSyncComparison,
   enrichMissingBrowserIds,
+  planGroupActivation,
   planSyncExecution
 } from '../src/shared/sync-engine.js';
 import { createEmptySyncPayload } from '../src/shared/gist.js';
+import {
+  DEFAULT_GROUPS,
+  normalizeExtensionGroupsList,
+  normalizeGroupsMap
+} from '../src/shared/storage.js';
 
 test('normalizeExtensionName strips browser suffixes, trademarks, and taglines', () => {
   assert.equal(normalizeExtensionName('uBlock Origin™'), 'ublock-origin');
@@ -432,6 +438,175 @@ test('equivalentAlternative flag and alternativeName propagate across sync compa
   assert.ok(snippet.includes('equivalentAlternative: true,'));
   assert.ok(snippet.includes("alternativeName: 'Simple Tab Groups',"));
 });
+
+test('new or ungrouped extensions automatically belong to the default group', () => {
+  const groupsMap = normalizeGroupsMap({
+    ...DEFAULT_GROUPS,
+    gaming: { id: 'gaming', name: 'Gaming', color: '#ec4899' }
+  });
+
+  assert.deepEqual(normalizeExtensionGroupsList(undefined, groupsMap), ['default']);
+  assert.deepEqual(normalizeExtensionGroupsList([], groupsMap), ['default']);
+  assert.deepEqual(normalizeExtensionGroupsList(['non-existent'], groupsMap), ['default']);
+  assert.deepEqual(normalizeExtensionGroupsList(['work', 'gaming'], groupsMap), [
+    'work',
+    'gaming'
+  ]);
+});
+
+test('planGroupActivation supports exclusive vs multiple activation and leaves default & ignored extensions untouched', () => {
+  const groups = normalizeGroupsMap({
+    ...DEFAULT_GROUPS,
+    gaming: { id: 'gaming', name: 'Gaming', color: '#ec4899' }
+  });
+
+  const localInstalled = [
+    {
+      id: 'nngceckbapebfimnlniiiahkandclblb',
+      name: 'Bitwarden Password Manager',
+      enabled: true,
+      mayDisable: true
+    },
+    {
+      id: 'cjpalhdlnbpafiamejdnhcphjbkeiagm',
+      name: 'uBlock Origin',
+      enabled: false,
+      mayDisable: true
+    },
+    {
+      id: 'fmkadmapgofadopljbjfkapdkoienihi',
+      name: 'React Developer Tools',
+      enabled: false,
+      mayDisable: true
+    },
+    {
+      id: 'dbepggeogbaibhgnhhndojpepiihcmeb',
+      name: 'Vimium',
+      enabled: false,
+      mayDisable: true
+    },
+    {
+      id: 'eimadpbcbfnmbkopoojfekhnkhdbieeh',
+      name: 'Dark Reader',
+      enabled: true,
+      mayDisable: true
+    }
+  ];
+
+  // Bitwarden & uBlock Origin are in 'default' (one enabled, one disabled -> both must stay untouched)
+  // React DevTools is in ['work']
+  // Vimium is in ['work', 'personal']
+  // Dark Reader is in ['fun', 'gaming']
+  const baseSettings = {
+    groups,
+    extensionGroups: {
+      bitwarden: ['default'],
+      'ublock-origin': ['default'],
+      'react-developer-tools': ['work'],
+      vimium: ['work', 'personal'],
+      'dark-reader': ['fun', 'gaming']
+    },
+    activeGroupIds: [],
+    exclusiveGroupActivation: true,
+    ignoredKeys: []
+  };
+
+  // 1. Activate 'work' in exclusive mode
+  const workPlan = planGroupActivation({
+    localExtensions: localInstalled,
+    settings: baseSettings,
+    groupId: 'work',
+    active: true
+  });
+
+  assert.deepEqual(workPlan.nextActiveGroupIds, ['work']);
+  assert.deepEqual(workPlan.untouchedDefaultKeys.sort(), ['bitwarden', 'ublock-origin']);
+  assert.equal(workPlan.targetStatesByKey['react-developer-tools'], true);
+  assert.equal(workPlan.targetStatesByKey['vimium'], true);
+  assert.equal(workPlan.targetStatesByKey['dark-reader'], false);
+  // React DevTools (was false -> true), Vimium (was false -> true), Dark Reader (was true -> false)
+  assert.equal(workPlan.localToggleActions.length, 3);
+
+  // 2. Switch to 'fun' in exclusive mode (`exclusiveGroupActivation: true`) -> 'work' is deactivated
+  const funExclusivePlan = planGroupActivation({
+    localExtensions: localInstalled,
+    settings: { ...baseSettings, activeGroupIds: ['work'] },
+    groupId: 'fun',
+    active: true
+  });
+
+  assert.deepEqual(funExclusivePlan.nextActiveGroupIds, ['fun']);
+  assert.equal(funExclusivePlan.targetStatesByKey['react-developer-tools'], false);
+  assert.equal(funExclusivePlan.targetStatesByKey['vimium'], false);
+  assert.equal(funExclusivePlan.targetStatesByKey['dark-reader'], true);
+
+  // 3. Activate 'fun' while 'work' is active in multiple mode (`exclusiveGroupActivation: false`)
+  const multiPlan = planGroupActivation({
+    localExtensions: localInstalled,
+    settings: {
+      ...baseSettings,
+      activeGroupIds: ['work'],
+      exclusiveGroupActivation: false
+    },
+    groupId: 'fun',
+    active: true
+  });
+
+  assert.deepEqual(multiPlan.nextActiveGroupIds, ['work', 'fun']);
+  assert.equal(multiPlan.targetStatesByKey['react-developer-tools'], true);
+  assert.equal(multiPlan.targetStatesByKey['vimium'], true);
+  assert.equal(multiPlan.targetStatesByKey['dark-reader'], true);
+});
+
+test('planSyncExecution respects syncActiveGroupsToGist setting (local vs Gist activeGroupIds)', () => {
+  const remotePayload = {
+    ...createEmptySyncPayload(),
+    activeGroupIds: ['fun']
+  };
+
+  const localInstalled = [
+    {
+      id: 'nngceckbapebfimnlniiiahkandclblb',
+      name: 'Bitwarden Password Manager',
+      enabled: true
+    }
+  ];
+
+  // Case 1: syncActiveGroupsToGist = true -> pushes local activeGroupIds ['work'] to Gist
+  const syncedPlan = planSyncExecution({
+    localExtensions: localInstalled,
+    remotePayload,
+    browserEnv: { family: 'chromium', brand: 'chrome', label: 'Chrome' },
+    settings: {
+      deviceId: 'dev_1',
+      syncDisabledExtensions: true,
+      syncActiveGroupsToGist: true,
+      activeGroupIds: ['work'],
+      extensionGroups: { bitwarden: ['default'] }
+    },
+    localMeta: { updatedAtByKey: {} },
+    mode: 'push'
+  });
+  assert.deepEqual(syncedPlan.nextPayload.activeGroupIds, ['work']);
+
+  // Case 2: syncActiveGroupsToGist = false -> keeps remote payload's activeGroupIds untouched
+  const localOnlyPlan = planSyncExecution({
+    localExtensions: localInstalled,
+    remotePayload,
+    browserEnv: { family: 'chromium', brand: 'chrome', label: 'Chrome' },
+    settings: {
+      deviceId: 'dev_1',
+      syncDisabledExtensions: true,
+      syncActiveGroupsToGist: false,
+      activeGroupIds: ['work'],
+      extensionGroups: { bitwarden: ['default'] }
+    },
+    localMeta: { updatedAtByKey: {} },
+    mode: 'push'
+  });
+  assert.deepEqual(localOnlyPlan.nextPayload.activeGroupIds, ['fun']);
+});
+
 
 
 

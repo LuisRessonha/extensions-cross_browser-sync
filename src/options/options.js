@@ -13,6 +13,8 @@ import {
 
 let currentState = null;
 let activeMatrixFilter = 'all';
+let activeGroupFilter = 'all';
+let editingGroupId = null;
 let availableXpiByKey = {};
 let xpiCheckPromise = null;
 let activeAlternativeItem = null;
@@ -44,6 +46,16 @@ const els = {
   clearAlternativeBtn: document.getElementById('clear-alternative-btn'),
   cancelAlternativeBtn: document.getElementById('cancel-alternative-btn'),
   saveAlternativeBtn: document.getElementById('save-alternative-btn'),
+  groupsBarList: document.getElementById('groups-bar-list'),
+  openGroupsModalBtn: document.getElementById('open-groups-modal-btn'),
+  manageGroupsModal: document.getElementById('manage-groups-modal'),
+  closeGroupsModalBtn: document.getElementById('close-groups-modal-btn'),
+  groupFormLabel: document.getElementById('group-form-label'),
+  newGroupNameInput: document.getElementById('new-group-name-input'),
+  newGroupColorInput: document.getElementById('new-group-color-input'),
+  saveGroupBtn: document.getElementById('save-group-btn'),
+  cancelEditGroupBtn: document.getElementById('cancel-edit-group-btn'),
+  manageGroupsList: document.getElementById('manage-groups-list'),
   alertBanner: document.getElementById('alert-banner'),
   githubToken: document.getElementById('github-token'),
   toggleTokenBtn: document.getElementById('toggle-token-btn'),
@@ -64,6 +76,8 @@ const els = {
   autoApplyEnabled: document.getElementById('auto-apply-enabled'),
   syncDisabledExtensions: document.getElementById('sync-disabled-extensions'),
   includeDevExtensions: document.getElementById('include-dev-extensions'),
+  exclusiveGroupActivation: document.getElementById('exclusive-group-activation'),
+  syncActiveGroupsGist: document.getElementById('sync-active-groups-gist'),
   savePrefsBtn: document.getElementById('save-prefs-btn'),
   exportSettingsBtn: document.getElementById('export-settings-btn'),
   importSettingsInput: document.getElementById('import-settings-input'),
@@ -219,12 +233,266 @@ function populateSettingsForm(settings, browserEnv) {
   els.autoApplyEnabled.checked = settings.autoApplyEnabledState !== false;
   els.syncDisabledExtensions.checked = settings.syncDisabledExtensions !== false;
   els.includeDevExtensions.checked = Boolean(settings.includeDevelopmentExtensions);
+  if (els.exclusiveGroupActivation) {
+    els.exclusiveGroupActivation.checked = settings.exclusiveGroupActivation !== false;
+  }
+  if (els.syncActiveGroupsGist) {
+    els.syncActiveGroupsGist.checked = settings.syncActiveGroupsToGist !== false;
+  }
+}
+
+function getOrderedGroups(groupsMap = {}) {
+  const entries = Object.values(groupsMap);
+  const def = entries.find((g) => g.id === 'default') || {
+    id: 'default',
+    name: 'Default',
+    color: '#64748b',
+    isDefault: true
+  };
+  const others = entries
+    .filter((g) => g && g.id !== 'default')
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  return [def, ...others];
+}
+
+function renderGroupsBar() {
+  if (!els.groupsBarList || !currentState) return;
+  const { comparison, settings } = currentState;
+  const items = (comparison?.items || []).filter((i) => i.status !== 'ignored');
+  const groupsMap = comparison?.groups || settings?.groups || {};
+  const activeGroupIds = Array.isArray(comparison?.activeGroupIds)
+    ? comparison.activeGroupIds
+    : Array.isArray(settings?.activeGroupIds)
+    ? settings.activeGroupIds
+    : [];
+  const orderedGroups = getOrderedGroups(groupsMap);
+
+  if (activeGroupFilter !== 'all' && !groupsMap[activeGroupFilter]) {
+    activeGroupFilter = 'all';
+  }
+
+  els.groupsBarList.replaceChildren();
+
+  // "All Groups" filter chip
+  const allChip = document.createElement('div');
+  allChip.className = `group-chip${activeGroupFilter === 'all' ? ' group-filter-selected' : ''}`;
+  const allFilterBtn = document.createElement('button');
+  allFilterBtn.type = 'button';
+  allFilterBtn.className = 'group-chip-filter-btn';
+  allFilterBtn.title = 'Show extensions from all groups';
+  allFilterBtn.textContent = 'All Groups';
+  allFilterBtn.addEventListener('click', () => {
+    activeGroupFilter = 'all';
+    renderMatrix();
+  });
+  allChip.appendChild(allFilterBtn);
+  els.groupsBarList.appendChild(allChip);
+
+  for (const grp of orderedGroups) {
+    const extCount = items.filter((item) => (item.groups || ['default']).includes(grp.id)).length;
+    const isActive = !grp.isDefault && activeGroupIds.includes(grp.id);
+    const isFilterSelected = activeGroupFilter === grp.id;
+
+    const chip = document.createElement('div');
+    chip.className = `group-chip${isFilterSelected ? ' group-filter-selected' : ''}${
+      isActive ? ' group-active-state' : ''
+    }`;
+
+    const filterBtn = document.createElement('button');
+    filterBtn.type = 'button';
+    filterBtn.className = 'group-chip-filter-btn';
+    filterBtn.title = grp.isDefault
+      ? `${grp.name} (${extCount}): Extensions in Default are never affected by activating or deactivating other groups. Click to filter.`
+      : `${grp.name} (${extCount}): Click to filter matrix by "${grp.name}".`;
+
+    const dot = document.createElement('span');
+    dot.className = 'group-dot';
+    dot.style.backgroundColor = grp.color || '#3b82f6';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = grp.name;
+
+    const countSpan = document.createElement('span');
+    countSpan.className = 'group-count';
+    countSpan.textContent = String(extCount);
+
+    filterBtn.append(dot, nameSpan, countSpan);
+    filterBtn.addEventListener('click', () => {
+      activeGroupFilter = activeGroupFilter === grp.id ? 'all' : grp.id;
+      renderMatrix();
+    });
+    chip.appendChild(filterBtn);
+
+    if (!grp.isDefault) {
+      const toggleBtn = document.createElement('button');
+      toggleBtn.type = 'button';
+      toggleBtn.className = `group-chip-toggle-btn${isActive ? ' is-active' : ''}`;
+      toggleBtn.textContent = isActive ? 'ACTIVE' : 'Activate';
+      toggleBtn.title = isActive
+        ? `Group "${grp.name}" is currently ACTIVE. Click to deactivate.`
+        : `Activate group "${grp.name}" (enables extensions in this group and disables extensions in inactive non-default groups; Default extensions stay untouched).`;
+      toggleBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        try {
+          toggleBtn.disabled = true;
+          const res = await sendMessage({
+            type: 'ACTIVATE_GROUP',
+            groupId: grp.id,
+            active: !isActive
+          });
+          currentState = res.data;
+          renderMatrix();
+          await refreshSyncLogs();
+          const r = res.result;
+          showAlert(
+            !isActive
+              ? `Activated group "${grp.name}" (${r?.toggledCount ?? 0} extensions toggled, ${
+                  r?.untouchedDefaultCount ?? 0
+                } Default untouched).`
+              : `Deactivated group "${grp.name}" (${r?.toggledCount ?? 0} extensions toggled).`
+          );
+        } catch (err) {
+          showAlert(err.message, true);
+        } finally {
+          toggleBtn.disabled = false;
+        }
+      });
+      chip.appendChild(toggleBtn);
+    }
+
+    els.groupsBarList.appendChild(chip);
+  }
+}
+
+function createExtensionGroupsCell(item, groupsMap) {
+  const tdGroups = document.createElement('td');
+  const wrap = document.createElement('div');
+  wrap.className = 'cell-groups-wrap';
+
+  const badgesRow = document.createElement('div');
+  badgesRow.className = 'cell-groups-badges';
+
+  const itemGroups =
+    Array.isArray(item.groups) && item.groups.length > 0 ? item.groups : ['default'];
+  const orderedGroups = getOrderedGroups(groupsMap);
+
+  for (const gid of itemGroups) {
+    const grp = groupsMap[gid] || { id: gid, name: gid, color: '#64748b', isDefault: gid === 'default' };
+    const badge = document.createElement('span');
+    badge.className = `group-badge${grp.isDefault ? ' group-badge-default' : ''}`;
+    badge.title = grp.isDefault
+      ? 'Default Group: Not affected when other groups are activated or deactivated'
+      : `Belongs to group "${grp.name}"`;
+
+    const dot = document.createElement('span');
+    dot.className = 'group-dot';
+    dot.style.backgroundColor = grp.color || '#3b82f6';
+    const text = document.createElement('span');
+    text.textContent = grp.name;
+    badge.append(dot, text);
+    badgesRow.appendChild(badge);
+  }
+
+  const pickerWrap = document.createElement('div');
+  pickerWrap.className = 'group-picker-dropdown';
+
+  const pickerBtn = document.createElement('button');
+  pickerBtn.type = 'button';
+  pickerBtn.className = 'btn btn-secondary btn-sm';
+  pickerBtn.style.padding = '2px 7px';
+  pickerBtn.style.fontSize = '11px';
+  pickerBtn.textContent = 'Groups ▾';
+  pickerBtn.title = 'Assign this extension to Default or one or more custom groups';
+
+  const menu = document.createElement('div');
+  menu.className = 'group-picker-menu hidden';
+  menu.addEventListener('click', (e) => e.stopPropagation());
+
+  for (const grp of orderedGroups) {
+    const label = document.createElement('label');
+    label.className = 'group-picker-option';
+    label.title = grp.isDefault
+      ? 'Default group (never affected by activating other groups)'
+      : `Include in "${grp.name}" group`;
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = itemGroups.includes(grp.id);
+
+    const dot = document.createElement('span');
+    dot.className = 'group-dot';
+    dot.style.backgroundColor = grp.color || '#3b82f6';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = grp.isDefault ? `${grp.name} (Independent)` : grp.name;
+
+    cb.addEventListener('change', async () => {
+      let nextGroups;
+      if (grp.isDefault) {
+        if (cb.checked) {
+          nextGroups = ['default'];
+        } else {
+          // If unchecking default without any other group selected, keep default
+          const nonDefault = itemGroups.filter((g) => g !== 'default');
+          nextGroups = nonDefault.length > 0 ? nonDefault : ['default'];
+        }
+      } else {
+        const baseNonDefault = itemGroups.filter((g) => g !== 'default');
+        if (cb.checked) {
+          nextGroups = Array.from(new Set([...baseNonDefault, grp.id]));
+        } else {
+          const remaining = baseNonDefault.filter((g) => g !== grp.id);
+          nextGroups = remaining.length > 0 ? remaining : ['default'];
+        }
+      }
+
+      try {
+        const res = await sendMessage({
+          type: 'SET_EXTENSION_GROUPS',
+          key: item.key,
+          groupIds: nextGroups
+        });
+        currentState = res.data;
+        renderMatrix();
+      } catch (err) {
+        showAlert(err.message, true);
+      }
+    });
+
+    label.append(cb, dot, nameSpan);
+    menu.appendChild(label);
+  }
+
+  pickerBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const wasHidden = menu.classList.contains('hidden');
+    for (const openMenu of document.querySelectorAll('.install-dropdown-menu, .group-picker-menu')) {
+      openMenu.classList.add('hidden');
+    }
+    if (wasHidden) {
+      const rect = pickerBtn.getBoundingClientRect();
+      if (rect.bottom + 180 > window.innerHeight) {
+        menu.classList.add('drop-up');
+      } else {
+        menu.classList.remove('drop-up');
+      }
+      menu.classList.remove('hidden');
+    }
+  });
+
+  pickerWrap.append(pickerBtn, menu);
+  wrap.append(badgesRow, pickerWrap);
+  tdGroups.appendChild(wrap);
+  return tdGroups;
 }
 
 function renderMatrix() {
   if (!currentState) return;
   const { comparison, settings } = currentState;
   const { counts, items } = comparison;
+  const groupsMap = comparison?.groups || settings?.groups || {};
+
+  renderGroupsBar();
 
   els.matrixStats.replaceChildren();
   const nonIgnoredItems = items.filter((i) => i.status !== 'ignored');
@@ -295,6 +563,11 @@ function renderMatrix() {
     if (activeMatrixFilter === 'state-diff' && item.status !== 'state-diff') return false;
     if (activeMatrixFilter === 'missing' && item.status !== 'missing') return false;
     if (activeMatrixFilter === 'ignored' && item.status !== 'ignored') return false;
+    if (activeGroupFilter !== 'all') {
+      const itemGroups =
+        Array.isArray(item.groups) && item.groups.length > 0 ? item.groups : ['default'];
+      if (!itemGroups.includes(activeGroupFilter)) return false;
+    }
     if (query) {
       const hay = `${item.name} ${item.key} ${item.localId || ''} ${item.ids?.chromium || ''} ${
         item.ids?.firefox || ''
@@ -309,7 +582,7 @@ function renderMatrix() {
   if (filtered.length === 0) {
     const tr = document.createElement('tr');
     const td = document.createElement('td');
-    td.colSpan = 6;
+    td.colSpan = 7;
     td.className = 'empty-cell';
     td.textContent = 'No extensions match the current filter.';
     tr.appendChild(td);
@@ -785,7 +1058,10 @@ function renderMatrix() {
 
     tdActions.appendChild(actRow);
 
+    const tdGroups = createExtensionGroupsCell(item, groupsMap);
+
     tr.appendChild(tdExt);
+    tr.appendChild(tdGroups);
     tr.appendChild(tdKey);
     tr.appendChild(tdIds);
     tr.appendChild(tdStatus);
@@ -995,7 +1271,13 @@ els.savePrefsBtn.addEventListener('click', async () => {
         autoPushOnChange: els.autoPushOnChange.checked,
         autoApplyEnabledState: els.autoApplyEnabled.checked,
         syncDisabledExtensions: els.syncDisabledExtensions.checked,
-        includeDevelopmentExtensions: els.includeDevExtensions.checked
+        includeDevelopmentExtensions: els.includeDevExtensions.checked,
+        exclusiveGroupActivation: els.exclusiveGroupActivation
+          ? els.exclusiveGroupActivation.checked
+          : true,
+        syncActiveGroupsToGist: els.syncActiveGroupsGist
+          ? els.syncActiveGroupsGist.checked
+          : true
       }
     });
     currentState = res.data;
@@ -1027,15 +1309,165 @@ els.settingsModal.addEventListener('click', (e) => {
   }
 });
 
+function resetGroupForm() {
+  editingGroupId = null;
+  if (els.groupFormLabel) els.groupFormLabel.textContent = 'Create New Custom Group';
+  if (els.newGroupNameInput) els.newGroupNameInput.value = '';
+  if (els.newGroupColorInput) els.newGroupColorInput.value = '#3b82f6';
+  if (els.saveGroupBtn) els.saveGroupBtn.textContent = '+ Save Group';
+  if (els.cancelEditGroupBtn) els.cancelEditGroupBtn.classList.add('hidden');
+}
+
+function renderManageGroupsList() {
+  if (!els.manageGroupsList || !currentState) return;
+  const { comparison, settings } = currentState;
+  const groupsMap = comparison?.groups || settings?.groups || {};
+  const items = (comparison?.items || []).filter((i) => i.status !== 'ignored');
+  const orderedGroups = getOrderedGroups(groupsMap);
+
+  els.manageGroupsList.replaceChildren();
+
+  for (const grp of orderedGroups) {
+    const extCount = items.filter((item) => (item.groups || ['default']).includes(grp.id)).length;
+    const row = document.createElement('div');
+    row.className = 'manage-group-row';
+
+    const info = document.createElement('div');
+    info.className = 'manage-group-info';
+
+    const dot = document.createElement('span');
+    dot.className = 'group-dot';
+    dot.style.backgroundColor = grp.color || '#3b82f6';
+
+    const textCol = document.createElement('div');
+    const nameEl = document.createElement('div');
+    nameEl.className = 'manage-group-name';
+    nameEl.textContent = grp.name;
+    const metaEl = document.createElement('div');
+    metaEl.className = 'manage-group-meta';
+    metaEl.textContent = grp.isDefault
+      ? `${extCount} extension(s) • System Default (Not affected by other groups)`
+      : `${extCount} extension(s) • ID: ${grp.id}`;
+    textCol.append(nameEl, metaEl);
+    info.append(dot, textCol);
+
+    const actions = document.createElement('div');
+    actions.className = 'button-row';
+
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'btn btn-secondary btn-sm';
+    editBtn.textContent = 'Edit';
+    editBtn.title = `Rename or change color for "${grp.name}"`;
+    editBtn.addEventListener('click', () => {
+      editingGroupId = grp.id;
+      els.groupFormLabel.textContent = `Edit Group "${grp.name}" (${grp.id})`;
+      els.newGroupNameInput.value = grp.name;
+      els.newGroupColorInput.value = grp.color || '#3b82f6';
+      els.saveGroupBtn.textContent = 'Update Group';
+      els.cancelEditGroupBtn.classList.remove('hidden');
+      els.newGroupNameInput.focus();
+    });
+    actions.appendChild(editBtn);
+
+    if (!grp.isDefault) {
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'btn btn-danger btn-sm';
+      delBtn.textContent = 'Delete';
+      delBtn.title = `Delete group "${grp.name}" (extensions only in this group will return to Default)`;
+      delBtn.addEventListener('click', async () => {
+        try {
+          delBtn.disabled = true;
+          const res = await sendMessage({
+            type: 'DELETE_GROUP',
+            groupId: grp.id
+          });
+          currentState = res.data;
+          if (editingGroupId === grp.id) {
+            resetGroupForm();
+          }
+          renderManageGroupsList();
+          renderMatrix();
+          showAlert(`Deleted group "${grp.name}".`);
+        } catch (err) {
+          delBtn.disabled = false;
+          showAlert(err.message, true);
+        }
+      });
+      actions.appendChild(delBtn);
+    }
+
+    row.append(info, actions);
+    els.manageGroupsList.appendChild(row);
+  }
+}
+
+function openManageGroupsModal() {
+  resetGroupForm();
+  renderManageGroupsList();
+  els.manageGroupsModal.classList.remove('hidden');
+}
+
+function closeManageGroupsModal() {
+  els.manageGroupsModal.classList.add('hidden');
+  resetGroupForm();
+}
+
+if (els.openGroupsModalBtn) {
+  els.openGroupsModalBtn.addEventListener('click', openManageGroupsModal);
+}
+if (els.closeGroupsModalBtn) {
+  els.closeGroupsModalBtn.addEventListener('click', closeManageGroupsModal);
+}
+if (els.cancelEditGroupBtn) {
+  els.cancelEditGroupBtn.addEventListener('click', resetGroupForm);
+}
+if (els.manageGroupsModal) {
+  els.manageGroupsModal.addEventListener('click', (e) => {
+    if (e.target === els.manageGroupsModal) {
+      closeManageGroupsModal();
+    }
+  });
+}
+if (els.saveGroupBtn) {
+  els.saveGroupBtn.addEventListener('click', async () => {
+    const name = els.newGroupNameInput.value.trim();
+    const color = els.newGroupColorInput.value || '#3b82f6';
+    if (!name) {
+      showAlert('Please enter a group name.', true);
+      return;
+    }
+    try {
+      els.saveGroupBtn.disabled = true;
+      const res = await sendMessage({
+        type: 'SAVE_GROUP',
+        id: editingGroupId || undefined,
+        name,
+        color
+      });
+      currentState = res.data;
+      resetGroupForm();
+      renderManageGroupsList();
+      renderMatrix();
+      showAlert(`Saved group "${res.savedGroup?.name || name}"!`);
+    } catch (err) {
+      showAlert(err.message, true);
+    } finally {
+      els.saveGroupBtn.disabled = false;
+    }
+  });
+}
+
 document.addEventListener('click', () => {
-  for (const openMenu of document.querySelectorAll('.install-dropdown-menu')) {
+  for (const openMenu of document.querySelectorAll('.install-dropdown-menu, .group-picker-menu')) {
     openMenu.classList.add('hidden');
   }
 });
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    for (const openMenu of document.querySelectorAll('.install-dropdown-menu')) {
+    for (const openMenu of document.querySelectorAll('.install-dropdown-menu, .group-picker-menu')) {
       openMenu.classList.add('hidden');
     }
     if (!els.settingsModal.classList.contains('hidden')) {
@@ -1046,6 +1478,9 @@ document.addEventListener('keydown', (e) => {
     }
     if (!els.matchAlternativeModal.classList.contains('hidden')) {
       closeMatchAlternativeModal();
+    }
+    if (els.manageGroupsModal && !els.manageGroupsModal.classList.contains('hidden')) {
+      closeManageGroupsModal();
     }
   }
 });
@@ -1357,7 +1792,13 @@ els.exportSettingsBtn.addEventListener('click', () => {
       autoPushOnChange: els.autoPushOnChange.checked,
       autoApplyEnabledState: els.autoApplyEnabled.checked,
       syncDisabledExtensions: els.syncDisabledExtensions.checked,
-      includeDevelopmentExtensions: els.includeDevExtensions.checked
+      includeDevelopmentExtensions: els.includeDevExtensions.checked,
+      exclusiveGroupActivation: els.exclusiveGroupActivation
+        ? els.exclusiveGroupActivation.checked
+        : true,
+      syncActiveGroupsToGist: els.syncActiveGroupsGist
+        ? els.syncActiveGroupsGist.checked
+        : true
     };
 
     const payload = {
@@ -1405,6 +1846,11 @@ els.importSettingsInput.addEventListener('change', async (e) => {
       'autoApplyEnabledState',
       'syncDisabledExtensions',
       'includeDevelopmentExtensions',
+      'exclusiveGroupActivation',
+      'syncActiveGroupsToGist',
+      'groups',
+      'extensionGroups',
+      'activeGroupIds',
       'ignoredKeys',
       'customMappings',
       'customBrowserIds'
