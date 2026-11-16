@@ -14,10 +14,13 @@ import {
   resolveFirefoxAddonFromAmo
 } from './matcher.js';
 import {
+  DEFAULT_GROUPS,
   appendSyncLog,
   getLocalMeta,
   getRemoteCache,
   getSettings,
+  normalizeExtensionGroupsList,
+  normalizeGroupsMap,
   saveLocalMeta,
   saveRemoteCache,
   saveSettings,
@@ -111,6 +114,19 @@ export function buildSyncRecordFromLocal(localExt, existingRemote, browserEnv, s
     catalog?.alternativeName ||
     '';
 
+  const groupsMap = normalizeGroupsMap({
+    ...(existingRemote?.groupsMap || {}),
+    ...(settings?.groups || {})
+  });
+  const localAssignedGroups = settings?.extensionGroups?.[key];
+  const rawGroups =
+    Array.isArray(localAssignedGroups) && localAssignedGroups.length > 0
+      ? localAssignedGroups
+      : Array.isArray(existingRemote?.groups) && existingRemote.groups.length > 0
+      ? existingRemote.groups
+      : ['default'];
+  const groups = normalizeExtensionGroupsList(rawGroups, groupsMap);
+
   return {
     key,
     name: localExt.name || existingRemote?.name || key,
@@ -119,6 +135,7 @@ export function buildSyncRecordFromLocal(localExt, existingRemote, browserEnv, s
     enabled: Boolean(localExt.enabled),
     updatedAt,
     lastSeenVersion: localExt.version || existingRemote?.lastSeenVersion || '',
+    groups,
     ids,
     storeUrls,
     ...(equivalentAlternative ? { equivalentAlternative: true } : {}),
@@ -162,6 +179,17 @@ export function computeSyncComparison({
   const effectiveIgnoredKeys = Array.from(
     new Set([...(settings.ignoredKeys || []), ...(normalizedRemote.ignoredKeys || [])])
   );
+  const mergedGroups = normalizeGroupsMap({
+    ...(normalizedRemote.groups || {}),
+    ...(settings.groups || {})
+  });
+  const effectiveSettings = {
+    ...settings,
+    groups: mergedGroups
+  };
+  const activeGroupIds = Array.isArray(settings.activeGroupIds)
+    ? settings.activeGroupIds.filter((id) => id && id !== 'default' && Boolean(mergedGroups[id]))
+    : [];
 
   const items = [];
   const counts = {
@@ -200,7 +228,7 @@ export function computeSyncComparison({
       localExt,
       remoteMatch,
       browserEnv,
-      settings,
+      effectiveSettings,
       localMeta
     );
     const storeInfo = getStoreInstallInfo(enrichedRecord, browserEnv.family, browserEnv.brand);
@@ -220,6 +248,7 @@ export function computeSyncComparison({
         remoteEnabled: remoteMatch ? Boolean(remoteMatch.enabled) : null,
         mayDisable: localExt.mayDisable !== false,
         installType: localExt.installType || 'normal',
+        groups: enrichedRecord.groups,
         ids: enrichedRecord.ids,
         storeUrls: enrichedRecord.storeUrls,
         storeInfo,
@@ -252,6 +281,7 @@ export function computeSyncComparison({
         remoteEnabled: Boolean(remoteMatch.enabled),
         mayDisable: localExt.mayDisable !== false,
         installType: localExt.installType || 'normal',
+        groups: enrichedRecord.groups,
         ids: enrichedRecord.ids,
         storeUrls: enrichedRecord.storeUrls,
         storeInfo,
@@ -274,6 +304,7 @@ export function computeSyncComparison({
         remoteEnabled: null,
         mayDisable: localExt.mayDisable !== false,
         installType: localExt.installType || 'normal',
+        groups: enrichedRecord.groups,
         ids: enrichedRecord.ids,
         storeUrls: enrichedRecord.storeUrls,
         storeInfo,
@@ -343,8 +374,14 @@ export function computeSyncComparison({
       catalog?.alternativeName ||
       '';
 
+    const itemGroups = normalizeExtensionGroupsList(
+      settings?.extensionGroups?.[remKey] || remRecord.groups,
+      mergedGroups
+    );
+
     const mergedRecord = {
       ...remRecord,
+      groups: itemGroups,
       ids: mergedIds,
       storeUrls: mergedStoreUrls,
       ...(equivalentAlternative ? { equivalentAlternative: true } : {}),
@@ -371,6 +408,7 @@ export function computeSyncComparison({
         remoteEnabled: Boolean(remRecord.enabled),
         mayDisable: true,
         installType: null,
+        groups: itemGroups,
         ids: mergedIds,
         storeUrls: mergedStoreUrls,
         storeInfo,
@@ -395,6 +433,7 @@ export function computeSyncComparison({
       remoteEnabled: Boolean(remRecord.enabled),
       mayDisable: true,
       installType: null,
+      groups: itemGroups,
       ids: mergedIds,
       storeUrls: mergedStoreUrls,
       storeInfo,
@@ -411,6 +450,8 @@ export function computeSyncComparison({
     browserEnv,
     counts,
     items,
+    groups: mergedGroups,
+    activeGroupIds,
     remoteUpdatedAt: remotePayload ? normalizedRemote.updatedAt : null,
     remoteUpdatedBy: remotePayload ? normalizedRemote.updatedBy : null
   };
@@ -452,6 +493,22 @@ export function planSyncExecution({
   const updatedTimestamps = { ...(localMeta?.updatedAtByKey || {}) };
   let remoteChanged = false;
 
+  const nextGroups =
+    mode === 'push'
+      ? normalizeGroupsMap(settings.groups)
+      : mode === 'pull'
+      ? normalizeGroupsMap({ ...(settings.groups || {}), ...(normalizedRemote.groups || {}) })
+      : normalizeGroupsMap({ ...(normalizedRemote.groups || {}), ...(settings.groups || {}) });
+
+  const effectiveSettings = {
+    ...settings,
+    groups: nextGroups
+  };
+
+  if (JSON.stringify(normalizedRemote.groups || {}) !== JSON.stringify(nextGroups)) {
+    remoteChanged = true;
+  }
+
   const effectiveIgnoredKeys =
     mode === 'push'
       ? Array.from(new Set(settings.ignoredKeys || []))
@@ -485,9 +542,29 @@ export function planSyncExecution({
       localExt,
       remoteMatch,
       browserEnv,
-      settings,
+      effectiveSettings,
       localMeta
     );
+
+    if (remoteMatch && mode === 'pull' && Array.isArray(remoteMatch.groups)) {
+      baseRecord.groups = normalizeExtensionGroupsList(remoteMatch.groups, nextGroups);
+    } else if (remoteMatch && mode === 'merge') {
+      const localTime = updatedTimestamps[key] ? Date.parse(updatedTimestamps[key]) : 0;
+      const remoteTime = remoteMatch.updatedAt ? Date.parse(remoteMatch.updatedAt) : 0;
+      const hasLocalExplicit = Array.isArray(settings?.extensionGroups?.[key]);
+      if (
+        remoteTime > localTime &&
+        Array.isArray(remoteMatch.groups) &&
+        remoteMatch.groups.length > 0 &&
+        !(
+          remoteMatch.groups.length === 1 &&
+          remoteMatch.groups[0] === 'default' &&
+          hasLocalExplicit
+        )
+      ) {
+        baseRecord.groups = normalizeExtensionGroupsList(remoteMatch.groups, nextGroups);
+      }
+    }
 
     const isIgnored =
       (mode === 'pull' && Boolean(remoteMatch?.ignored)) ||
@@ -530,10 +607,14 @@ export function planSyncExecution({
     const localState = Boolean(localExt.enabled);
     const remoteState = Boolean(remoteMatch.enabled);
 
-    // Check if cross-browser IDs were enriched by this browser
+    // Check if cross-browser IDs or groups were enriched/updated by this browser
     const prevIdsJson = JSON.stringify(remoteMatch.ids || {});
     const nextIdsJson = JSON.stringify(baseRecord.ids || {});
-    if (prevIdsJson !== nextIdsJson) {
+    const prevGroupsJson = JSON.stringify(
+      normalizeExtensionGroupsList(remoteMatch.groups, nextGroups)
+    );
+    const nextGroupsJson = JSON.stringify(baseRecord.groups || ['default']);
+    if (prevIdsJson !== nextIdsJson || prevGroupsJson !== nextGroupsJson) {
       remoteChanged = true;
     }
 
@@ -621,9 +702,23 @@ export function planSyncExecution({
       remoteChanged = true;
     }
 
+    const remGroups = normalizeExtensionGroupsList(
+      mode === 'push'
+        ? settings?.extensionGroups?.[remKey] || remRecord.groups
+        : remRecord.groups || settings?.extensionGroups?.[remKey],
+      nextGroups
+    );
+    if (
+      JSON.stringify(normalizeExtensionGroupsList(remRecord.groups, nextGroups)) !==
+      JSON.stringify(remGroups)
+    ) {
+      remoteChanged = true;
+    }
+
     // Even in 'push' mode, we preserve extensions installed on other browsers unless replaceRemote is explicitly requested
     nextExtensions[remKey] = {
       ...remRecord,
+      groups: remGroups,
       ignored: isIgnored
     };
 
@@ -631,6 +726,7 @@ export function planSyncExecution({
 
     missingExtensions.push({
       ...remRecord,
+      groups: remGroups,
       storeInfo: getStoreInstallInfo(remRecord, browserEnv.family, browserEnv.brand)
     });
   }
@@ -648,6 +744,32 @@ export function planSyncExecution({
     remoteChanged = true;
   }
 
+  const syncActiveToGist = settings.syncActiveGroupsToGist !== false;
+  let nextActiveGroupIds = normalizedRemote.activeGroupIds || [];
+  if (syncActiveToGist) {
+    if (mode === 'push') {
+      nextActiveGroupIds = Array.isArray(settings.activeGroupIds) ? settings.activeGroupIds : [];
+    } else if (mode === 'pull') {
+      nextActiveGroupIds = Array.isArray(normalizedRemote.activeGroupIds)
+        ? normalizedRemote.activeGroupIds
+        : [];
+    } else {
+      const localActive = Array.isArray(settings.activeGroupIds) ? settings.activeGroupIds : [];
+      const remoteActive = Array.isArray(normalizedRemote.activeGroupIds)
+        ? normalizedRemote.activeGroupIds
+        : [];
+      nextActiveGroupIds = localActive.length > 0 ? localActive : remoteActive;
+    }
+    nextActiveGroupIds = nextActiveGroupIds.filter(
+      (id) => id && id !== 'default' && Boolean(nextGroups[id])
+    );
+    if (
+      JSON.stringify(normalizedRemote.activeGroupIds || []) !== JSON.stringify(nextActiveGroupIds)
+    ) {
+      remoteChanged = true;
+    }
+  }
+
   const nextPayload = {
     app: 'extensions-cross_browser-sync',
     schemaVersion: 1,
@@ -660,6 +782,8 @@ export function planSyncExecution({
           family: browserEnv.family
         }
       : normalizedRemote.updatedBy,
+    groups: nextGroups,
+    activeGroupIds: nextActiveGroupIds,
     ignoredKeys: finalIgnoredKeys,
     extensions: nextExtensions
   };
@@ -1096,10 +1220,29 @@ export async function performSync(options = {}) {
       await updateSyncGist(settings.githubToken, settings.gistId, finalPayload);
     }
 
-    // 6. Persist cache, synced ignoredKeys, timestamps, and sync log
+    // 6. Persist cache, synced ignoredKeys, groups, timestamps, and sync log
     await saveRemoteCache(finalPayload);
+    const nextSettingsPatch = {};
     if (Array.isArray(finalPayload.ignoredKeys)) {
-      await saveSettings({ ignoredKeys: finalPayload.ignoredKeys });
+      nextSettingsPatch.ignoredKeys = finalPayload.ignoredKeys;
+    }
+    if (finalPayload.groups && typeof finalPayload.groups === 'object') {
+      nextSettingsPatch.groups = normalizeGroupsMap(finalPayload.groups);
+    }
+    if (finalPayload.extensions && typeof finalPayload.extensions === 'object') {
+      const mergedExtGroups = { ...(settings.extensionGroups || {}) };
+      for (const [k, rec] of Object.entries(finalPayload.extensions)) {
+        if (Array.isArray(rec?.groups) && rec.groups.length > 0) {
+          mergedExtGroups[k] = normalizeExtensionGroupsList(rec.groups, nextSettingsPatch.groups);
+        }
+      }
+      nextSettingsPatch.extensionGroups = mergedExtGroups;
+    }
+    if (settings.syncActiveGroupsToGist !== false && Array.isArray(finalPayload.activeGroupIds)) {
+      nextSettingsPatch.activeGroupIds = finalPayload.activeGroupIds;
+    }
+    if (Object.keys(nextSettingsPatch).length > 0) {
+      await saveSettings(nextSettingsPatch);
     }
     const summary = {
       mode,
@@ -1477,6 +1620,538 @@ export async function toggleIgnoreKeyAndSync(key) {
 
   return nextPayload;
 }
+
+/**
+ * Pure function that computes the next active group IDs and the local extension enable/disable
+ * actions when activating or deactivating a group.
+ *
+ * Rules:
+ * - Extensions in the `default` group (`groups.includes('default')`) are NEVER affected by other groups.
+ * - Ignored extensions are NEVER affected.
+ * - Extensions belonging to at least one active group are enabled (`targetEnabled = true`).
+ * - Extensions belonging only to inactive non-default groups are disabled (`targetEnabled = false`).
+ * - Respects `settings.exclusiveGroupActivation` (exclusive single active group vs. multiple active groups).
+ */
+export function planGroupActivation({
+  localExtensions = [],
+  remotePayload = null,
+  settings = {},
+  groupId,
+  active
+}) {
+  if (groupId === 'default') {
+    throw new Error('The Default group is always independent and is not affected by other groups.');
+  }
+
+  const normalizedRemote = normalizeSyncPayload(remotePayload);
+  const remoteMap = normalizedRemote.extensions || {};
+  const groupsMap = normalizeGroupsMap({
+    ...(normalizedRemote.groups || {}),
+    ...(settings.groups || {})
+  });
+
+  const currentActive = Array.isArray(settings.activeGroupIds)
+    ? settings.activeGroupIds.filter((id) => id && id !== 'default' && Boolean(groupsMap[id]))
+    : [];
+
+  let nextActiveGroupIds = [];
+  if (!groupId || groupId === 'none') {
+    nextActiveGroupIds = [];
+  } else {
+    const cleanGroupId = String(groupId)
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-_]/g, '-');
+    if (!groupsMap[cleanGroupId]) {
+      throw new Error(`Group "${cleanGroupId}" does not exist.`);
+    }
+    const shouldBeActive =
+      typeof active === 'boolean' ? active : !currentActive.includes(cleanGroupId);
+
+    if (settings.exclusiveGroupActivation !== false) {
+      nextActiveGroupIds = shouldBeActive
+        ? [cleanGroupId]
+        : currentActive.filter((id) => id !== cleanGroupId);
+    } else {
+      nextActiveGroupIds = shouldBeActive
+        ? Array.from(new Set([...currentActive, cleanGroupId]))
+        : currentActive.filter((id) => id !== cleanGroupId);
+    }
+  }
+
+  const effectiveIgnoredKeys = Array.from(
+    new Set([...(settings.ignoredKeys || []), ...(normalizedRemote.ignoredKeys || [])])
+  );
+
+  const localToggleActions = [];
+  const targetStatesByKey = {};
+  const untouchedDefaultKeys = [];
+  const matchedRemoteKeys = new Set();
+
+  for (const localExt of localExtensions) {
+    if (localExt.installType === 'development' && !settings.includeDevelopmentExtensions) {
+      continue;
+    }
+
+    const remoteMatch = findMatchingRemoteRecord(
+      localExt,
+      remoteMap,
+      'chromium',
+      settings.customMappings
+    );
+    const key = remoteMatch?.key || resolveCanonicalKey(localExt, settings.customMappings);
+    if (remoteMatch) {
+      matchedRemoteKeys.add(remoteMatch.key);
+    }
+
+    const isIgnored =
+      Boolean(remoteMatch?.ignored) ||
+      isExtensionIgnored(localExt, key, effectiveIgnoredKeys);
+    if (isIgnored) {
+      continue;
+    }
+
+    const extGroups = normalizeExtensionGroupsList(
+      settings?.extensionGroups?.[key] || remoteMatch?.groups,
+      groupsMap
+    );
+
+    if (extGroups.includes('default')) {
+      untouchedDefaultKeys.push(key);
+      continue;
+    }
+
+    const targetEnabled =
+      nextActiveGroupIds.length > 0
+        ? extGroups.some((gid) => nextActiveGroupIds.includes(gid))
+        : false;
+
+    targetStatesByKey[key] = targetEnabled;
+
+    if (Boolean(localExt.enabled) !== targetEnabled && localExt.mayDisable !== false) {
+      localToggleActions.push({
+        id: localExt.id,
+        key,
+        name: localExt.name,
+        targetEnabled
+      });
+    }
+  }
+
+  for (const [remKey, remRecord] of Object.entries(remoteMap)) {
+    if (matchedRemoteKeys.has(remKey)) continue;
+    const isIgnored =
+      Boolean(remRecord?.ignored) ||
+      isExtensionIgnored(remRecord, remKey, effectiveIgnoredKeys);
+    if (isIgnored) continue;
+
+    const extGroups = normalizeExtensionGroupsList(
+      settings?.extensionGroups?.[remKey] || remRecord?.groups,
+      groupsMap
+    );
+
+    if (extGroups.includes('default')) {
+      untouchedDefaultKeys.push(remKey);
+      continue;
+    }
+
+    targetStatesByKey[remKey] =
+      nextActiveGroupIds.length > 0
+        ? extGroups.some((gid) => nextActiveGroupIds.includes(gid))
+        : false;
+  }
+
+  return {
+    nextActiveGroupIds,
+    localToggleActions,
+    targetStatesByKey,
+    untouchedDefaultKeys
+  };
+}
+
+/**
+ * Activates or deactivates a group, toggles local extensions accordingly (leaving `default`
+ * and `ignored` extensions untouched), and optionally syncs the active group state to Gist
+ * when `settings.syncActiveGroupsToGist` is enabled.
+ *
+ * @param {{ groupId: string | null, active?: boolean }} params
+ */
+export async function activateGroup({ groupId, active }) {
+  const settings = await getSettings();
+  const localMeta = await getLocalMeta();
+  const browserEnv = detectBrowserEnvironment();
+  const localExtensions = await getInstalledExtensions();
+  const cached = (await getRemoteCache()) || createEmptySyncPayload();
+
+  const plan = planGroupActivation({
+    localExtensions,
+    remotePayload: cached,
+    settings,
+    groupId,
+    active
+  });
+
+  const nowIso = new Date().toISOString();
+  const appliedToggles = [];
+
+  if (plan.localToggleActions.length > 0) {
+    isApplyingRemoteState = true;
+    try {
+      for (const action of plan.localToggleActions) {
+        try {
+          await setExtensionEnabled(action.id, action.targetEnabled);
+          appliedToggles.push(action);
+        } catch (err) {
+          console.warn(`Failed to toggle extension ${action.name} (${action.id}):`, err);
+        }
+      }
+    } finally {
+      setTimeout(() => {
+        isApplyingRemoteState = false;
+      }, 500);
+    }
+  }
+
+  const updatedTimestamps = { ...(localMeta.updatedAtByKey || {}) };
+  for (const key of Object.keys(plan.targetStatesByKey)) {
+    updatedTimestamps[key] = nowIso;
+  }
+
+  await saveSettings({ activeGroupIds: plan.nextActiveGroupIds });
+  await saveLocalMeta({ updatedAtByKey: updatedTimestamps });
+
+  if (settings.syncActiveGroupsToGist !== false) {
+    const nextExtensions = { ...(cached.extensions || {}) };
+    for (const [key, targetEnabled] of Object.entries(plan.targetStatesByKey)) {
+      if (nextExtensions[key]) {
+        nextExtensions[key] = {
+          ...nextExtensions[key],
+          enabled: targetEnabled,
+          updatedAt: nowIso
+        };
+      }
+    }
+
+    const nextPayload = {
+      ...normalizeSyncPayload(cached),
+      updatedAt: nowIso,
+      updatedBy: {
+        deviceId: settings.deviceId,
+        deviceName: settings.deviceName || browserEnv.label,
+        browser: browserEnv.brand,
+        family: browserEnv.family
+      },
+      groups: normalizeGroupsMap({ ...(cached.groups || {}), ...(settings.groups || {}) }),
+      activeGroupIds: plan.nextActiveGroupIds,
+      extensions: nextExtensions
+    };
+
+    await saveRemoteCache(nextPayload);
+
+    const token = (settings.githubToken || '').trim();
+    const gistId = (settings.gistId || '').trim();
+    if (token && gistId) {
+      try {
+        await updateSyncGist(token, gistId, nextPayload);
+      } catch (err) {
+        console.warn('Failed to push active group state to Gist:', err);
+      }
+    }
+  }
+
+  const activeNames = plan.nextActiveGroupIds
+    .map((id) => settings.groups?.[id]?.name || id)
+    .join(', ');
+
+  await appendSyncLog({
+    status: 'success',
+    mode: 'group',
+    message:
+      plan.nextActiveGroupIds.length > 0
+        ? `Activated group(s): ${activeNames} (${appliedToggles.length} local extensions toggled).`
+        : `Deactivated context groups (${appliedToggles.length} local extensions toggled).`
+  });
+
+  return {
+    activeGroupIds: plan.nextActiveGroupIds,
+    toggledCount: appliedToggles.length,
+    untouchedDefaultCount: plan.untouchedDefaultKeys.length
+  };
+}
+
+/**
+ * Creates or updates a custom extension group and syncs the group definition to Gist.
+ *
+ * @param {{ id?: string, name: string, color?: string }} params
+ */
+export async function saveGroup({ id, name, color }) {
+  const trimmedName = String(name || '').trim();
+  if (!trimmedName) {
+    throw new Error('Group name is required.');
+  }
+
+  const cleanId = String(id || trimmedName)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  if (!cleanId) {
+    throw new Error('Invalid group identifier.');
+  }
+
+  const settings = await getSettings();
+  const browserEnv = detectBrowserEnvironment();
+  const cached = (await getRemoteCache()) || createEmptySyncPayload();
+  const nextGroups = normalizeGroupsMap({
+    ...(cached.groups || {}),
+    ...(settings.groups || {})
+  });
+
+  nextGroups[cleanId] = {
+    id: cleanId,
+    name: trimmedName,
+    color: String(color || nextGroups[cleanId]?.color || '#3b82f6').trim(),
+    isDefault: cleanId === 'default'
+  };
+
+  await saveSettings({ groups: nextGroups });
+
+  const nextPayload = {
+    ...normalizeSyncPayload(cached),
+    updatedAt: new Date().toISOString(),
+    updatedBy: {
+      deviceId: settings.deviceId,
+      deviceName: settings.deviceName || browserEnv.label,
+      browser: browserEnv.brand,
+      family: browserEnv.family
+    },
+    groups: nextGroups
+  };
+
+  await saveRemoteCache(nextPayload);
+
+  const token = (settings.githubToken || '').trim();
+  const gistId = (settings.gistId || '').trim();
+  if (token && gistId) {
+    try {
+      await updateSyncGist(token, gistId, nextPayload);
+    } catch (err) {
+      console.warn('Failed to push saved group to Gist:', err);
+    }
+  }
+
+  return nextGroups[cleanId];
+}
+
+/**
+ * Deletes a custom group (cannot delete `default`). Any extension that belonged only
+ * to the deleted group automatically reverts to `['default']`.
+ *
+ * @param {string} groupId
+ */
+export async function deleteGroup(groupId) {
+  const cleanId = String(groupId || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]/g, '-');
+
+  if (!cleanId) {
+    throw new Error('Group ID is required.');
+  }
+  if (cleanId === 'default') {
+    throw new Error('The Default group cannot be deleted.');
+  }
+
+  const settings = await getSettings();
+  const browserEnv = detectBrowserEnvironment();
+  const cached = (await getRemoteCache()) || createEmptySyncPayload();
+
+  const nextGroups = normalizeGroupsMap({
+    ...(cached.groups || {}),
+    ...(settings.groups || {})
+  });
+  delete nextGroups[cleanId];
+
+  const nextActiveGroupIds = (settings.activeGroupIds || []).filter((id) => id !== cleanId);
+  const nextExtensionGroups = {};
+  for (const [k, list] of Object.entries(settings.extensionGroups || {})) {
+    const filtered = Array.isArray(list) ? list.filter((id) => id !== cleanId) : [];
+    nextExtensionGroups[k] = normalizeExtensionGroupsList(filtered, nextGroups);
+  }
+
+  await saveSettings({
+    groups: nextGroups,
+    activeGroupIds: nextActiveGroupIds,
+    extensionGroups: nextExtensionGroups
+  });
+
+  const nextExtensions = { ...(cached.extensions || {}) };
+  for (const [k, rec] of Object.entries(nextExtensions)) {
+    if (!rec || typeof rec !== 'object') continue;
+    const filtered = Array.isArray(rec.groups)
+      ? rec.groups.filter((id) => id !== cleanId)
+      : [];
+    nextExtensions[k] = {
+      ...rec,
+      groups: normalizeExtensionGroupsList(filtered, nextGroups)
+    };
+  }
+
+  const nextPayload = {
+    ...normalizeSyncPayload(cached),
+    updatedAt: new Date().toISOString(),
+    updatedBy: {
+      deviceId: settings.deviceId,
+      deviceName: settings.deviceName || browserEnv.label,
+      browser: browserEnv.brand,
+      family: browserEnv.family
+    },
+    groups: nextGroups,
+    activeGroupIds: (cached.activeGroupIds || []).filter((id) => id !== cleanId),
+    extensions: nextExtensions
+  };
+
+  await saveRemoteCache(nextPayload);
+
+  const token = (settings.githubToken || '').trim();
+  const gistId = (settings.gistId || '').trim();
+  if (token && gistId) {
+    try {
+      await updateSyncGist(token, gistId, nextPayload);
+    } catch (err) {
+      console.warn('Failed to push group deletion to Gist:', err);
+    }
+  }
+
+  return { deletedId: cleanId, groups: nextGroups };
+}
+
+/**
+ * Updates the groups assigned to a specific extension (`key`).
+ * If `groupIds` is empty, the extension automatically belongs to `['default']`.
+ *
+ * @param {{ key: string, groupIds: string[] }} params
+ */
+export async function setExtensionGroups({ key, groupIds }) {
+  if (!key) throw new Error('Extension key is required.');
+
+  const settings = await getSettings();
+  const localMeta = await getLocalMeta();
+  const browserEnv = detectBrowserEnvironment();
+  const localExtensions = await getInstalledExtensions();
+  const cached = (await getRemoteCache()) || createEmptySyncPayload();
+
+  const groupsMap = normalizeGroupsMap({
+    ...(cached.groups || {}),
+    ...(settings.groups || {})
+  });
+
+  const normalizedGroupIds = normalizeExtensionGroupsList(groupIds, groupsMap);
+  const nextExtensionGroups = {
+    ...(settings.extensionGroups || {}),
+    [key]: normalizedGroupIds
+  };
+
+  const updatedSettings = await saveSettings({ extensionGroups: nextExtensionGroups });
+  const nowIso = new Date().toISOString();
+  await touchExtensionTimestamp(key, nowIso);
+
+  // If a context group is currently active and this extension is not in `default`,
+  // apply the active group state to this extension locally if installed
+  const activeGroupIds = Array.isArray(updatedSettings.activeGroupIds)
+    ? updatedSettings.activeGroupIds.filter((id) => id && id !== 'default' && Boolean(groupsMap[id]))
+    : [];
+
+  let localTargetEnabled = null;
+  if (activeGroupIds.length > 0 && !normalizedGroupIds.includes('default')) {
+    localTargetEnabled = normalizedGroupIds.some((gid) => activeGroupIds.includes(gid));
+    const localMatch = localExtensions.find(
+      (extItem) => resolveCanonicalKey(extItem, updatedSettings.customMappings) === key
+    );
+    if (
+      localMatch &&
+      !isExtensionIgnored(localMatch, key, updatedSettings.ignoredKeys) &&
+      localMatch.mayDisable !== false &&
+      Boolean(localMatch.enabled) !== localTargetEnabled &&
+      updatedSettings.autoApplyEnabledState !== false
+    ) {
+      isApplyingRemoteState = true;
+      try {
+        await setExtensionEnabled(localMatch.id, localTargetEnabled);
+      } catch (err) {
+        console.warn(`Failed to toggle extension ${localMatch.name} after group change:`, err);
+      } finally {
+        setTimeout(() => {
+          isApplyingRemoteState = false;
+        }, 500);
+      }
+    }
+  }
+
+  const nextExtensions = { ...(cached.extensions || {}) };
+  if (nextExtensions[key]) {
+    nextExtensions[key] = {
+      ...nextExtensions[key],
+      groups: normalizedGroupIds,
+      ...(typeof localTargetEnabled === 'boolean' && updatedSettings.syncActiveGroupsToGist !== false
+        ? { enabled: localTargetEnabled }
+        : {}),
+      updatedAt: nowIso
+    };
+  } else {
+    const localMatch = localExtensions.find(
+      (extItem) => resolveCanonicalKey(extItem, updatedSettings.customMappings) === key
+    );
+    if (localMatch) {
+      const rec = buildSyncRecordFromLocal(
+        localMatch,
+        null,
+        browserEnv,
+        updatedSettings,
+        localMeta
+      );
+      rec.groups = normalizedGroupIds;
+      if (typeof localTargetEnabled === 'boolean' && updatedSettings.syncActiveGroupsToGist !== false) {
+        rec.enabled = localTargetEnabled;
+      }
+      rec.updatedAt = nowIso;
+      nextExtensions[key] = rec;
+    }
+  }
+
+  const nextPayload = {
+    ...normalizeSyncPayload(cached),
+    updatedAt: nowIso,
+    updatedBy: {
+      deviceId: updatedSettings.deviceId,
+      deviceName: updatedSettings.deviceName || browserEnv.label,
+      browser: browserEnv.brand,
+      family: browserEnv.family
+    },
+    groups: groupsMap,
+    extensions: nextExtensions
+  };
+
+  await saveRemoteCache(nextPayload);
+
+  const token = (updatedSettings.githubToken || '').trim();
+  const gistId = (updatedSettings.gistId || '').trim();
+  if (token && gistId) {
+    try {
+      await updateSyncGist(token, gistId, nextPayload);
+    } catch (err) {
+      console.warn('Failed to push extension groups update to Gist:', err);
+    }
+  }
+
+  return {
+    key,
+    groups: normalizedGroupIds
+  };
+}
+
 
 
 

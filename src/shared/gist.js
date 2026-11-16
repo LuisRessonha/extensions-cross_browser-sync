@@ -1,3 +1,9 @@
+import {
+  DEFAULT_GROUPS,
+  normalizeExtensionGroupsList,
+  normalizeGroupsMap
+} from './storage.js';
+
 export const GIST_FILENAME = 'extensions-cross_browser-sync.json';
 export const GIST_DESCRIPTION =
   'extensions-cross_browser-sync — Synced browser extensions & enabled/disabled state';
@@ -226,6 +232,8 @@ export function createEmptySyncPayload() {
     schemaVersion: 1,
     updatedAt: new Date().toISOString(),
     updatedBy: null,
+    groups: { ...DEFAULT_GROUPS },
+    activeGroupIds: [],
     ignoredKeys: [],
     extensions: {}
   };
@@ -238,18 +246,69 @@ export function normalizeSyncPayload(raw) {
   if (!raw || typeof raw !== 'object') {
     return createEmptySyncPayload();
   }
-  const extensions = raw.extensions && typeof raw.extensions === 'object' ? raw.extensions : {};
-  const ignoredSet = new Set(Array.isArray(raw.ignoredKeys) ? raw.ignoredKeys.filter(Boolean) : []);
-  for (const [k, rec] of Object.entries(extensions)) {
-    if (rec?.ignored) {
-      ignoredSet.add(rec.key || k);
+  const rawExtensions =
+    raw.extensions && typeof raw.extensions === 'object' ? raw.extensions : {};
+  const groups = normalizeGroupsMap(raw.groups);
+
+  // Ensure any group ID referenced in extensions or activeGroupIds exists in `groups`
+  const ensureGroupExists = (grpId) => {
+    const id = String(grpId || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-_]/g, '-');
+    if (!id) return;
+    if (!groups[id]) {
+      groups[id] = {
+        id,
+        name: id.charAt(0).toUpperCase() + id.slice(1).replace(/[-_]+/g, ' '),
+        color: '#3b82f6',
+        isDefault: false
+      };
+    }
+  };
+
+  if (Array.isArray(raw.activeGroupIds)) {
+    for (const gid of raw.activeGroupIds) {
+      ensureGroupExists(gid);
     }
   }
+
+  const extensions = {};
+  const ignoredSet = new Set(Array.isArray(raw.ignoredKeys) ? raw.ignoredKeys.filter(Boolean) : []);
+  for (const [k, rec] of Object.entries(rawExtensions)) {
+    if (!rec || typeof rec !== 'object') continue;
+    if (rec.ignored) {
+      ignoredSet.add(rec.key || k);
+    }
+    if (Array.isArray(rec.groups)) {
+      for (const gid of rec.groups) {
+        ensureGroupExists(gid);
+      }
+    }
+    extensions[k] = {
+      ...rec,
+      groups: normalizeExtensionGroupsList(rec.groups, groups)
+    };
+  }
+
+  const activeGroupIds = Array.isArray(raw.activeGroupIds)
+    ? raw.activeGroupIds
+        .map((id) =>
+          String(id || '')
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9-_]/g, '-')
+        )
+        .filter((id) => id && id !== 'default' && Boolean(groups[id]))
+    : [];
+
   return {
     app: 'extensions-cross_browser-sync',
     schemaVersion: 1,
     updatedAt: raw.updatedAt || new Date().toISOString(),
     updatedBy: raw.updatedBy || null,
+    groups,
+    activeGroupIds: Array.from(new Set(activeGroupIds)),
     ignoredKeys: Array.from(ignoredSet),
     extensions
   };
