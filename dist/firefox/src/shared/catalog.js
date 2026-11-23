@@ -87,5 +87,14 @@ export const KNOWN_EXTENSIONS_CATALOG = [
     firefoxId: '{8dbdb4cd-15d0-4302-ac56-9a91c9a9e047}',
     firefoxSlug: 'udemy-watcher',
     xpiFile: 'xpi-files/udemy-watcher.xpi'
+  },
+  {
+    key: 'knockoff',
+    name: 'Knockoff - Amazon Shopping Filter',
+    aliases: ['Knockoff'],
+    chromiumId: 'pjgickchbiikhdfpmecaabkphmofpdce',
+    firefoxId: 'knockoff@knockoff.shopping',
+    firefoxSlug: 'knockoff-amazon-brand-filter',
+    xpiFile: 'xpi-files/knockoff.xpi'
   }
 ];

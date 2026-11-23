@@ -1,35 +1,35 @@
 {
-  "updatedAt": "2026-11-16T03:03:44.166Z",
+  "updatedAt": "2026-11-23T03:05:09.071Z",
   "extensions": {
     "bitwarden": {
       "key": "bitwarden",
       "name": "Bitwarden Password Manager",
       "fileName": "bitwarden.xpi",
       "xpiFile": "xpi-files/bitwarden.xpi",
-      "version": "2026.10.2",
+      "version": "2026.11.0",
       "chromiumId": "nngceckbapebfimnlniiiahkandclblb",
       "firefoxId": "{446900e4-71c2-419f-a6a7-df9c091e268b}",
       "firefoxSlug": "bitwarden-password-manager",
-      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/5198653/bitwarden_password_manager-2026.10.2.xpi",
-      "sha256": "abf9d7273dd55ac0583ecc6997f7f7ae3d29de11e2ad0a4838b80e2b941daa73",
-      "amoHash": "sha256:abf9d7273dd55ac0583ecc6997f7f7ae3d29de11e2ad0a4838b80e2b941daa73",
-      "sizeBytes": 23833411,
-      "updatedAt": "2026-11-04T10:04:31.470Z"
+      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/5278513/bitwarden_password_manager-2026.11.0.xpi",
+      "sha256": "607d6433d9de151a4c51135ad9e70882460d0e0493a9b585f15a9848d5f10b97",
+      "amoHash": "sha256:607d6433d9de151a4c51135ad9e70882460d0e0493a9b585f15a9848d5f10b97",
+      "sizeBytes": 28129360,
+      "updatedAt": "2026-11-23T03:05:06.261Z"
     },
     "ublock-origin-lite": {
       "key": "ublock-origin-lite",
       "name": "uBlock Origin Lite",
       "fileName": "ublock-origin-lite.xpi",
       "xpiFile": "xpi-files/ublock-origin-lite.xpi",
-      "version": "2026.1110.1816",
+      "version": "2026.1122.1948",
       "chromiumId": "ddkjiahejlhfcafbddmgiahcphecmpfh",
       "firefoxId": "uBOLiteRedux@raymondhill.net",
       "firefoxSlug": "ublock-origin-lite",
-      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/5235054/ublock_origin_lite-2026.1110.1816.xpi",
-      "sha256": "3838bf88742ab921f553795b5b96f21e6429e198c1db3865c414402e5fe55059",
-      "amoHash": "sha256:3838bf88742ab921f553795b5b96f21e6429e198c1db3865c414402e5fe55059",
-      "sizeBytes": 9334051,
-      "updatedAt": "2026-11-16T03:03:38.180Z"
+      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/5291589/ublock_origin_lite-2026.1122.1948.xpi",
+      "sha256": "49839fe83ce6534aee9af793149f1f7614dcceea374fea6945fca5d5e04c6567",
+      "amoHash": "sha256:49839fe83ce6534aee9af793149f1f7614dcceea374fea6945fca5d5e04c6567",
+      "sizeBytes": 9446325,
+      "updatedAt": "2026-11-23T03:05:07.063Z"
     },
     "udemy": {
       "key": "udemy",
@@ -66,15 +66,15 @@
       "name": "Buster: Captcha Solver for Humans",
       "fileName": "buster.xpi",
       "xpiFile": "xpi-files/buster.xpi",
-      "version": "3.4.1",
+      "version": "3.4.2",
       "chromiumId": "mpbjkejclgfgadiemmefgebjfooflfhl",
       "firefoxId": "{e58d3966-3d76-4cd9-8552-1582fbc800c1}",
       "firefoxSlug": "buster-captcha-solver",
-      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/5257790/buster_captcha_solver-3.4.1.xpi",
-      "sha256": "255436718d8494b45e417699ee129637b5ec0faa3332392aa8499f070418a8bd",
-      "amoHash": "sha256:255436718d8494b45e417699ee129637b5ec0faa3332392aa8499f070418a8bd",
-      "sizeBytes": 8417671,
-      "updatedAt": "2026-11-16T03:03:43.636Z"
+      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/5265688/buster_captcha_solver-3.4.2.xpi",
+      "sha256": "6b0add6aa1d283e1c18937554505bc613ceffbf0c08f8f3fdee2714982dc7689",
+      "amoHash": "sha256:6b0add6aa1d283e1c18937554505bc613ceffbf0c08f8f3fdee2714982dc7689",
+      "sizeBytes": 8419977,
+      "updatedAt": "2026-11-23T03:05:08.179Z"
     },
     "demandware-with-ease": {
       "key": "demandware-with-ease",
@@ -96,15 +96,15 @@
       "name": "Save Image As Png",
       "fileName": "save-image-as-png.xpi",
       "xpiFile": "xpi-files/save-image-as-png.xpi",
-      "version": "20.2",
+      "version": "20.3.2",
       "chromiumId": "lcmjmlikfpkekigllmmcdcmmpledladh",
       "firefoxId": "SaveImageAsType@d7om.dev",
       "firefoxSlug": "siat",
-      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/4947427/siat-20.2.xpi",
-      "sha256": "05378563619f0b768529b3336fd2303e5f18ac510fc8d2ded73bd678e85b9844",
-      "amoHash": "sha256:05378563619f0b768529b3336fd2303e5f18ac510fc8d2ded73bd678e85b9844",
-      "sizeBytes": 309950,
-      "updatedAt": "2026-11-09T10:34:09.673Z"
+      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/5177064/siat-20.3.2.xpi",
+      "sha256": "5a7f252117c76a92fa06e85430a07451440b25eb078ca27513fe37ce248bbf8b",
+      "amoHash": "sha256:5a7f252117c76a92fa06e85430a07451440b25eb078ca27513fe37ce248bbf8b",
+      "sizeBytes": 304553,
+      "updatedAt": "2026-11-23T03:05:08.420Z"
     },
     "udemy-custom-speed-changer": {
       "key": "udemy-custom-speed-changer",
@@ -126,15 +126,30 @@
       "name": "Udemy Watcher",
       "fileName": "udemy-watcher.xpi",
       "xpiFile": "xpi-files/udemy-watcher.xpi",
-      "version": "1.0.0",
+      "version": "3.0.0",
       "chromiumId": "pnhffcbmfokemolmmdfdagcfmpibkabp",
       "firefoxId": "{8dbdb4cd-15d0-4302-ac56-9a91c9a9e047}",
       "firefoxSlug": "udemy-watcher",
-      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/4364844/udemy_watcher-1.0.0.xpi",
-      "sha256": "66c0bdb8fa9b80f47497e543af29ce32900a116bff25886349fa7b96d0c39cf1",
-      "amoHash": "sha256:66c0bdb8fa9b80f47497e543af29ce32900a116bff25886349fa7b96d0c39cf1",
-      "sizeBytes": 19364,
-      "updatedAt": "2026-11-09T10:34:10.109Z"
+      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/5268240/udemy_watcher-3.0.0.xpi",
+      "sha256": "237cc7b3dbbc905dfc7cb10209cbf074bfdcfde36ac7fbd4978bebcee8736a73",
+      "amoHash": "sha256:237cc7b3dbbc905dfc7cb10209cbf074bfdcfde36ac7fbd4978bebcee8736a73",
+      "sizeBytes": 39495,
+      "updatedAt": "2026-11-23T03:05:08.847Z"
+    },
+    "knockoff": {
+      "key": "knockoff",
+      "name": "Knockoff - Amazon Shopping Filter",
+      "fileName": "knockoff.xpi",
+      "xpiFile": "xpi-files/knockoff.xpi",
+      "version": "1.7.0",
+      "chromiumId": "pjgickchbiikhdfpmecaabkphmofpdce",
+      "firefoxId": "knockoff@knockoff.shopping",
+      "firefoxSlug": "knockoff-amazon-brand-filter",
+      "downloadUrl": "https://addons.mozilla.org/firefox/downloads/file/5252636/knockoff_amazon_brand_filter-1.7.0.xpi",
+      "sha256": "74ac4d7f5a9b2fb5b42127e0a420d01b1f0254069a57e0cc0431916bb3671fae",
+      "amoHash": "sha256:74ac4d7f5a9b2fb5b42127e0a420d01b1f0254069a57e0cc0431916bb3671fae",
+      "sizeBytes": 324665,
+      "updatedAt": "2026-11-23T03:05:09.071Z"
     }
   }
 }
